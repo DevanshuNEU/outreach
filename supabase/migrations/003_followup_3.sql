@@ -1,0 +1,1 @@
+ALTER TABLE outreach ADD COLUMN IF NOT EXISTS followup_3_sent_at TIMESTAMPTZ;

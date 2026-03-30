@@ -123,6 +123,12 @@ class ApplicationUpdate(BaseModel):
     linkedin_note: str | None = None
 
 
+class NextFollowUp(BaseModel):
+    followup_number: int
+    due_date: str
+    is_overdue: bool
+
+
 class ApplicationOut(BaseModel):
     id: str
     user_id: str
@@ -137,6 +143,8 @@ class ApplicationOut(BaseModel):
     notes: str | None = None
     linkedin_note: str | None = None
     contact_count: int = 0
+    next_followup: NextFollowUp | None = None
+    has_reply: bool = False
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -173,6 +181,7 @@ class OutreachUpdate(BaseModel):
     reply_date: str | None = None
     followup_1_sent_at: str | None = None
     followup_2_sent_at: str | None = None
+    followup_3_sent_at: str | None = None
     notes: str | None = None
 
 
@@ -185,6 +194,7 @@ class OutreachOut(BaseModel):
     sent_at: str | None = None
     followup_1_sent_at: str | None = None
     followup_2_sent_at: str | None = None
+    followup_3_sent_at: str | None = None
     replied: bool
     reply_date: str | None = None
     notes: str | None = None

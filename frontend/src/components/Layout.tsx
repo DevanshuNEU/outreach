@@ -8,6 +8,7 @@ import {
   User,
   LogOut,
   Zap,
+  TrendingUp,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { path: "/fit", label: "Fit Check", icon: Zap },
   { path: "/outreach/new", label: "New Outreach", icon: PlusCircle },
   { path: "/tracker", label: "Tracker", icon: List },
+  { path: "/analytics", label: "Analytics", icon: TrendingUp },
   { path: "/templates", label: "Templates", icon: FileText },
   { path: "/profile", label: "Profile", icon: User },
 ];

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Send, MessageSquare, BarChart3, Zap, DollarSign } from "lucide-react";
+import { PlusCircle, Send, MessageSquare, BarChart3, Zap, DollarSign, TrendingUp } from "lucide-react";
+import { FollowUpQueueCard } from "@/components/FollowUpQueueCard";
 import api from "@/lib/api";
 
 interface Stats {
@@ -39,10 +40,17 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button onClick={() => navigate("/outreach/new")} className="gap-2">
-          <PlusCircle className="h-4 w-4" /> New Outreach
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/analytics")} className="gap-2">
+            <TrendingUp className="h-4 w-4" /> Analytics
+          </Button>
+          <Button onClick={() => navigate("/outreach/new")} className="gap-2">
+            <PlusCircle className="h-4 w-4" /> New Outreach
+          </Button>
+        </div>
       </div>
+
+      <FollowUpQueueCard />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>

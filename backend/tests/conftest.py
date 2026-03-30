@@ -110,6 +110,7 @@ def _patch_get_db(mock_db, monkeypatch):
     import app.routers.profiles
     import app.routers.templates
     import app.routers.emails
+    import app.routers.analytics
     import app.auth.router as _auth_router
 
     _db = mock_db  # capture reference
@@ -123,6 +124,7 @@ def _patch_get_db(mock_db, monkeypatch):
         app.routers.profiles,
         app.routers.templates,
         app.routers.emails,
+        app.routers.analytics,
         _auth_router,
     ]:
         if hasattr(mod, "get_db"):
@@ -168,6 +170,8 @@ def make_app(**kwargs):
         "notes": None,
         "linkedin_note": None,
         "contact_count": 0,
+        "next_followup": None,
+        "has_reply": False,
         "created_at": "2026-03-30T00:00:00",
         "updated_at": "2026-03-30T00:00:00",
         **kwargs,
@@ -198,6 +202,7 @@ def make_outreach(**kwargs):
         "sent_at": None,
         "followup_1_sent_at": None,
         "followup_2_sent_at": None,
+        "followup_3_sent_at": None,
         "replied": False,
         "reply_date": None,
         "notes": None,

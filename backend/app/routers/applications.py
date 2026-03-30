@@ -1,10 +1,18 @@
 import uuid
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.database import get_db
 from app.auth.deps import get_current_user
 from app.models.schemas import ApplicationCreate, ApplicationUpdate, ApplicationOut
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
+
+# Follow-up cadence matches stats.py
+_FU_CADENCE = [
+    (1, 3, "followup_1_sent_at"),
+    (2, 10, "followup_2_sent_at"),
+    (3, 17, "followup_3_sent_at"),
+]
 
 
 @router.get("", response_model=list[ApplicationOut])
@@ -28,16 +36,44 @@ def list_applications(
         app_ids = [a["id"] for a in apps]
         outreach_res = (
             db.table("outreach")
-            .select("application_id")
+            .select("application_id, contact_id, sent_at, replied, followup_1_sent_at, followup_2_sent_at, followup_3_sent_at")
             .in_("application_id", app_ids)
             .execute()
         )
         counts: dict[str, int] = {}
+        has_reply: dict[str, bool] = {}
+        # Track the most urgent follow-up per application
+        next_followups: dict[str, dict] = {}
+        now = datetime.now(timezone.utc)
+
         for row in outreach_res.data or []:
             aid = row["application_id"]
             counts[aid] = counts.get(aid, 0) + 1
+            if row.get("replied"):
+                has_reply[aid] = True
+
+            # Compute next follow-up for this outreach row
+            if row.get("sent_at") and not row.get("replied"):
+                try:
+                    sent_at = datetime.fromisoformat(row["sent_at"].replace("Z", "+00:00"))
+                except (ValueError, TypeError):
+                    continue
+                for fu_num, days_after, field in _FU_CADENCE:
+                    if row.get(field):
+                        continue
+                    due_date = sent_at + timedelta(days=days_after)
+                    is_overdue = now >= due_date
+                    days_until = (due_date - now).days
+                    fu = {"followup_number": fu_num, "due_date": due_date.isoformat(), "is_overdue": is_overdue}
+                    # Keep the most urgent (most overdue or soonest due)
+                    if aid not in next_followups or days_until < (datetime.fromisoformat(next_followups[aid]["due_date"].replace("Z", "+00:00")) - now).days:
+                        next_followups[aid] = fu
+                    break
+
         for a in apps:
             a["contact_count"] = counts.get(a["id"], 0)
+            a["has_reply"] = has_reply.get(a["id"], False)
+            a["next_followup"] = next_followups.get(a["id"])
 
     return apps
 

@@ -11,6 +11,7 @@ from app.routers.contacts import router as contacts_router
 from app.routers.outreach import router as outreach_router
 from app.routers.stats import router as stats_router
 from app.routers.fit_analyzer import router as fit_router
+from app.routers.analytics import router as analytics_router
 
 app = FastAPI(title="Cold Outreach API")
 
@@ -32,6 +33,7 @@ app.include_router(contacts_router)
 app.include_router(outreach_router)
 app.include_router(stats_router)
 app.include_router(fit_router)
+app.include_router(analytics_router)
 
 
 @app.get("/api/health")

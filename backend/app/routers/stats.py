@@ -1,10 +1,17 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from app.database import get_db
 from app.auth.deps import get_current_user
 from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["stats"])
+
+# Follow-up cadence: Day 3, Day 10, Day 17 after initial send
+FOLLOWUP_CADENCE = [
+    (1, 3, "followup_1_sent_at"),
+    (2, 10, "followup_2_sent_at"),
+    (3, 17, "followup_3_sent_at"),
+]
 
 
 def _get_daily_apollo_credits_used(db) -> int:
@@ -121,4 +128,107 @@ def get_usage(current_user: dict = Depends(get_current_user)):
             "apollo_rate_limit_per_min": 200,
         },
         "recent": user_usage.data[:20] if user_usage.data else [],
+    }
+
+
+def _compute_next_followup(outreach_row: dict, now: datetime) -> dict | None:
+    """For a single outreach row, return the next follow-up due (or None if all done/replied)."""
+    if outreach_row.get("replied"):
+        return None
+    sent_at_str = outreach_row.get("sent_at")
+    if not sent_at_str:
+        return None
+
+    sent_at = datetime.fromisoformat(sent_at_str.replace("Z", "+00:00"))
+    for fu_num, days_after, field in FOLLOWUP_CADENCE:
+        if outreach_row.get(field):
+            continue  # already sent this follow-up
+        due_date = sent_at + timedelta(days=days_after)
+        is_overdue = now >= due_date
+        days_until = (due_date - now).days
+        return {
+            "followup_number": fu_num,
+            "due_date": due_date.isoformat(),
+            "is_overdue": is_overdue,
+            "days_until": days_until,  # negative = overdue by N days
+        }
+    return None  # all 3 follow-ups already sent
+
+
+@router.get("/followup-queue")
+def get_followup_queue(current_user: dict = Depends(get_current_user)):
+    db = get_db()
+    uid = current_user["id"]
+    now = datetime.now(timezone.utc)
+
+    # Get all outreach that's been sent but not replied to
+    outreach_res = (
+        db.table("outreach")
+        .select("*, contacts(*)")
+        .eq("user_id", uid)
+        .eq("replied", False)
+        .neq("sent_at", "null")
+        .execute()
+    )
+    rows = outreach_res.data or []
+
+    # Filter to only rows with actual sent_at
+    rows = [r for r in rows if r.get("sent_at")]
+
+    if not rows:
+        return {"overdue": [], "due_today": [], "upcoming": [], "total_due": 0}
+
+    # Batch-fetch applications + companies
+    app_ids = list({r["application_id"] for r in rows})
+    apps_res = (
+        db.table("applications")
+        .select("id, job_title, company_id, companies(name, location)")
+        .in_("id", app_ids)
+        .execute()
+    )
+    app_map = {a["id"]: a for a in (apps_res.data or [])}
+
+    overdue = []
+    due_today = []
+    upcoming = []
+
+    for row in rows:
+        fu = _compute_next_followup(row, now)
+        if not fu:
+            continue
+
+        app = app_map.get(row["application_id"], {})
+        company = app.get("companies") or {}
+        contact = row.get("contacts") or {}
+
+        item = {
+            "outreach_id": row["id"],
+            "application_id": row["application_id"],
+            "followup_number": fu["followup_number"],
+            "followup_field": FOLLOWUP_CADENCE[fu["followup_number"] - 1][2],
+            "due_date": fu["due_date"],
+            "days_until": fu["days_until"],
+            "is_overdue": fu["is_overdue"],
+            "contact_name": f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip(),
+            "contact_email": contact.get("email", ""),
+            "company_name": company.get("name", "Unknown"),
+            "job_title": app.get("job_title", ""),
+        }
+
+        if fu["is_overdue"] and fu["days_until"] < 0:
+            overdue.append(item)
+        elif fu["days_until"] == 0:
+            due_today.append(item)
+        elif fu["days_until"] <= 3:
+            upcoming.append(item)
+
+    # Sort: most overdue first, then by due date
+    overdue.sort(key=lambda x: x["days_until"])
+    upcoming.sort(key=lambda x: x["days_until"])
+
+    return {
+        "overdue": overdue,
+        "due_today": due_today,
+        "upcoming": upcoming,
+        "total_due": len(overdue) + len(due_today),
     }

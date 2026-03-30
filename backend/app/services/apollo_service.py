@@ -16,34 +16,41 @@ def _apollo_headers() -> dict:
 
 
 SENIORITY_FILTERS = {
-    "startup": {  # 1-20 employees
+    # Startup <50: go straight to the top — CEO/CTO makes every hire.
+    # Target 1-2 people max. No recruiters at this size.
+    "startup": {
         "searches": [
-            {"person_seniorities": ["owner", "founder", "c_suite", "vp", "director", "manager"]},
+            {"person_seniorities": ["owner", "founder", "c_suite"], "person_titles": ["CTO", "CEO", "Co-Founder", "VP Engineering", "Head of Engineering"]},
+            {"person_seniorities": ["director", "manager"], "person_titles": ["Engineering", "Software", "Technology"]},
         ],
-        "per_page": 25,
+        "per_page": 3,
     },
-    "growth": {  # 20-500
+    # Growth 50-500: Engineering Manager is the highest-ROI target.
+    # They are literally judged on how fast they hire. Recruiter is secondary.
+    "growth": {
         "searches": [
-            {"person_seniorities": ["vp", "c_suite", "director"]},
-            {"person_titles": ["Senior Engineer", "Staff Engineer", "Principal Engineer", "AI", "ML", "Platform", "Infrastructure"]},
-            {"person_titles": ["Recruiter", "Talent Acquisition", "People Operations"]},
+            {"person_seniorities": ["manager", "director"], "person_titles": ["Engineering Manager", "Director of Engineering", "Head of Engineering", "VP Engineering"]},
+            {"person_titles": ["Technical Recruiter", "Engineering Recruiter", "Talent Acquisition"]},
         ],
-        "per_page": 10,
+        "per_page": 5,
     },
-    "midsize": {  # 500-5000
+    # Midsize 500-5000: Hiring manager first, then technical recruiter.
+    # Never spray — EM + 1 recruiter is the ceiling.
+    "midsize": {
         "searches": [
-            {"person_titles": ["Technical Recruiter", "Talent Acquisition", "University Recruiter"]},
-            {"person_seniorities": ["director", "manager"], "person_titles": ["Engineering", "Software", "AI", "ML"]},
-            {"person_titles": ["Staff Engineer", "Principal Engineer", "AI", "ML", "Platform"]},
+            {"person_seniorities": ["manager", "director"], "person_titles": ["Engineering Manager", "Software Engineering Manager", "Director of Engineering"]},
+            {"person_titles": ["Technical Recruiter", "University Recruiter", "Campus Recruiter", "Early Career Recruiter", "New Grad Recruiter"]},
         ],
-        "per_page": 10,
+        "per_page": 5,
     },
-    "enterprise": {  # 5000+
+    # Enterprise 5000+: University/new grad recruiters own the OPT pipeline.
+    # They know exactly what to do with F1/OPT candidates. Hit them + 1 EM.
+    "enterprise": {
         "searches": [
-            {"person_titles": ["University Recruiter", "Campus Recruiter", "Early Career", "New Grad"]},
-            {"person_seniorities": ["vp", "director"], "person_titles": ["Engineering", "Software"]},
+            {"person_titles": ["University Recruiter", "Campus Recruiter", "Early Career Recruiter", "New Grad Recruiter", "University Programs"]},
+            {"person_seniorities": ["manager", "director"], "person_titles": ["Engineering Manager", "Software Engineering Manager"]},
         ],
-        "per_page": 10,
+        "per_page": 5,
     },
 }
 

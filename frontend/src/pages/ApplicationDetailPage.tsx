@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/CopyButton";
+import { FollowUpTimeline } from "@/components/FollowUpTimeline";
 import { Check, X, Send, Link } from "lucide-react";
 import api from "@/lib/api";
 
@@ -14,6 +15,9 @@ interface Outreach {
   contact_id: string;
   personalized_greeting: string;
   sent_at: string | null;
+  followup_1_sent_at: string | null;
+  followup_2_sent_at: string | null;
+  followup_3_sent_at: string | null;
   replied: boolean;
   reply_date: string | null;
   contact: {
@@ -72,6 +76,13 @@ export function ApplicationDetailPage() {
 
   const toggleReplied = async (o: Outreach) => {
     await api.put(`/api/outreach/${o.id}`, { replied: !o.replied });
+    loadData();
+  };
+
+  const markFollowUpSent = async (outreachId: string, field: string) => {
+    await api.put(`/api/outreach/${outreachId}`, {
+      [field]: new Date().toISOString(),
+    });
     loadData();
   };
 
@@ -167,6 +178,14 @@ export function ApplicationDetailPage() {
                       <p className="text-xs text-blue-900 dark:text-blue-100">
                         {app.linkedin_note}
                       </p>
+                    </div>
+                  )}
+                  {o.sent_at && (
+                    <div className="mt-3 pt-3 border-t">
+                      <FollowUpTimeline
+                        outreach={o}
+                        onMarkSent={markFollowUpSent}
+                      />
                     </div>
                   )}
                 </CardContent>
