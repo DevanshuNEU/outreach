@@ -250,6 +250,11 @@ async def draft_email(
     # Strip leading separator artifacts (--- or ___) Claude sometimes adds
     body = re.sub(r'^[-_]{3,}\s*\n+', '', body).strip()
 
+    # Hard-enforce 60-char subject limit — find clean cut point
+    if len(subject) > 60:
+        cut = subject[:60].rfind(" ")
+        subject = subject[:cut] if cut > 40 else subject[:60]
+
     # Extract first name from full_name for LinkedIn note sign-off
     first_name = full_name.split()[0] if full_name.strip() else "Devanshu"
 
