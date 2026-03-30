@@ -68,6 +68,7 @@ export function NewOutreachPage() {
   // Step 4: Contacts
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [findingContacts, setFindingContacts] = useState(false);
+  const [searchAttempted, setSearchAttempted] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualFirst, setManualFirst] = useState("");
   const [manualLast, setManualLast] = useState("");
@@ -181,11 +182,13 @@ export function NewOutreachPage() {
 
   const handleFindContacts = async () => {
     setFindingContacts(true);
+    setSearchAttempted(false);
     try {
       const res = await api.post(
         `/api/applications/${applicationId}/find-contacts`
       );
       setContacts(res.data);
+      setSearchAttempted(true);
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to find contacts");
     } finally {
@@ -561,9 +564,16 @@ export function NewOutreachPage() {
             )}
 
             {contacts.length === 0 && !findingContacts && !showManualForm && (
-              <p className="text-muted-foreground text-sm">
-                Search Apollo for auto-discovery, or add contacts manually from LinkedIn.
-              </p>
+              searchAttempted ? (
+                <div className="text-sm space-y-1">
+                  <p className="text-orange-500 font-medium">No contacts found on Apollo.</p>
+                  <p className="text-muted-foreground">Small companies often aren't in Apollo's database. Use "Add Manually" with contacts from LinkedIn or the job posting.</p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Search Apollo for auto-discovery, or add contacts manually from LinkedIn.
+                </p>
+              )
             )}
 
             {contacts.length > 0 && (
