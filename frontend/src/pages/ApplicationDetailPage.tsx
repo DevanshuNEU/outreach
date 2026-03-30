@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ interface Outreach {
 
 export function ApplicationDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+
   const [app, setApp] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
   const [outreach, setOutreach] = useState<Outreach[]>([]);

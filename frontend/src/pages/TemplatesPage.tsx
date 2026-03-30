@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Sparkles, Loader2 } from "lucide-react";
 import api from "@/lib/api";

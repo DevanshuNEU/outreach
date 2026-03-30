@@ -214,7 +214,7 @@ export function TrackerPage() {
           </Select>
 
           {/* Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
             <SelectTrigger className="w-56">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>

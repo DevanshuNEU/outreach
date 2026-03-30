@@ -216,13 +216,6 @@ export function NewOutreachPage() {
     }
   };
 
-  const handleAddToOutreach = async (contact: Contact) => {
-    await api.post("/api/outreach", {
-      application_id: applicationId,
-      contact_id: contact.id,
-    });
-    setStep("send");
-  };
 
   const handleAddAllToOutreach = async () => {
     for (const c of contacts) {
