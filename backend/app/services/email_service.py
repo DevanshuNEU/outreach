@@ -68,7 +68,7 @@ STRICT 120 WORD MAXIMUM for the body. Count every word. If you hit 121, cut. No 
 ━━ IMPORTANT ━━
 ONE EMAIL PER COMPANY. Same body for all contacts. Swap greeting name only.
 OUTPUT: Subject: line, then body only. No greeting. No links. No sign-off. Those are added separately.
-If you're given metrics or background details, use only what's provided. Don't invent specifics."""
+NEVER invent metrics, performance numbers, or statistics. If a number isn't explicitly in the provided background or projects, do not write it. Only use what's given."""
 
 
 LINKEDIN_NOTE_PROMPT = """You write a LinkedIn connection request note. 300 character HARD LIMIT — LinkedIn will reject anything longer. Count every character including spaces.
@@ -96,13 +96,15 @@ async def generate_linkedin_note(
     job_title: str | None,
     email_subject: str,
     email_body: str,
+    first_name: str = "Devanshu",
 ) -> str:
     user_msg = f"""Company: {company_name}
 Role: {job_title or "Software Engineer"}
 Email subject I sent them: {email_subject}
 Email body I sent them: {email_body[:300]}
+My first name (sign with this EXACTLY): {first_name}
 
-Write the LinkedIn connection request note now. Under 300 characters. Output only the note."""
+Write the LinkedIn connection request note now. Under 300 characters. End with my first name exactly as written above. Output only the note."""
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -158,6 +160,7 @@ async def draft_email(
     projects: list,
     sign_off_block: str,
     links_block: str,
+    full_name: str = "",
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
@@ -174,16 +177,16 @@ async def draft_email(
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
 
-    # Inject JD insights as a research brief to force a specific hook
+    # Inject JD insights as a research brief — advisory context for the hook
     if jd_insights:
-        user_msg += "\n━━ RESEARCH BRIEF (use these to write the hook — must be specific to this company) ━━\n"
+        user_msg += "\n━━ RESEARCH BRIEF ━━\n"
         if jd_insights.get("hook"):
-            user_msg += f"What they're building: {jd_insights['hook']}\n"
+            user_msg += f"What they're specifically building: {jd_insights['hook']}\n"
         if jd_insights.get("challenge"):
-            user_msg += f"Core challenge: {jd_insights['challenge']}\n"
+            user_msg += f"Core engineering challenge: {jd_insights['challenge']}\n"
         if jd_insights.get("connection"):
-            user_msg += f"Best connection angle: {jd_insights['connection']}\n"
-        user_msg += "━━ Use the above to write a hook that ONLY applies to this company. ━━\n"
+            user_msg += f"Suggested connection angle (use only if it's stronger than your template's default story — otherwise use the template): {jd_insights['connection']}\n"
+        user_msg += "The hook MUST be specific to this company. If another company could fit, rewrite it.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     user_msg += f"\nMy Background:\n{background}\n"
     if projects:
@@ -220,6 +223,9 @@ async def draft_email(
     # Strip leading separator artifacts (--- or ___) Claude sometimes adds
     body = re.sub(r'^[-_]{3,}\s*\n+', '', body).strip()
 
+    # Extract first name from full_name for LinkedIn note sign-off
+    first_name = full_name.split()[0] if full_name.strip() else "Devanshu"
+
     # Generate LinkedIn note using the drafted email as context
     linkedin_note = await generate_linkedin_note(
         client=client,
@@ -227,6 +233,7 @@ async def draft_email(
         job_title=None,
         email_subject=subject,
         email_body=body,
+        first_name=first_name,
     )
 
     # Log usage

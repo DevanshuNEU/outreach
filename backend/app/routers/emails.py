@@ -55,6 +55,7 @@ async def generate_draft(
         projects=profile.get("projects", []),
         sign_off_block=profile["sign_off_block"],
         links_block=profile["links_block"],
+        full_name=profile.get("full_name", ""),
     )
 
     # Save draft to application
