@@ -166,10 +166,10 @@ Endpoint: `POST https://api.apollo.io/api/v1/mixed_people/api_search` (NOT mixed
 
 ```
 SUPABASE_URL=https://iuykqluvkanimguteevp.supabase.co
-SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1eWtxbHV2a2FuaW1ndXRlZXZwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDcxNjY3MywiZXhwIjoyMDkwMjkyNjczfQ.FpfW0oTMSoiVshq3xZcN3hWMzdyY-Y8jwQbzaz68zNA
-APOLLO_API_KEY=<UPDATE THIS — see Pending Tasks below>
-ANTHROPIC_API_KEY=REDACTED_ANTHROPIC_KEY
-JWT_SECRET=95dea695d961fefa98fc75842779298552102039b96e587967ce1f01cd5a8e65
+SUPABASE_SERVICE_KEY=<your-supabase-service-key>
+APOLLO_API_KEY=<your-apollo-api-key>
+ANTHROPIC_API_KEY=<your-anthropic-api-key>
+JWT_SECRET=<your-jwt-secret>
 CORS_ORIGINS=http://localhost:5173
 ```
 
