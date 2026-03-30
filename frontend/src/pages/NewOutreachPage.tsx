@@ -565,9 +565,15 @@ export function NewOutreachPage() {
 
             {contacts.length === 0 && !findingContacts && !showManualForm && (
               searchAttempted ? (
-                <div className="text-sm space-y-1">
-                  <p className="text-orange-500 font-medium">No contacts found on Apollo.</p>
-                  <p className="text-muted-foreground">Small companies often aren't in Apollo's database. Use "Add Manually" with contacts from LinkedIn or the job posting.</p>
+                <div className="text-sm space-y-2 p-3 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+                  <p className="text-orange-600 dark:text-orange-400 font-medium">No verified emails found on Apollo.</p>
+                  <p className="text-muted-foreground">This usually means the company is too small for Apollo's database, or no one there has a verified work email indexed.</p>
+                  <p className="text-muted-foreground font-medium">What to do:</p>
+                  <ul className="text-muted-foreground list-disc pl-4 space-y-1">
+                    <li>Check the job posting for a direct email (e.g. "email us at...")</li>
+                    <li>Search LinkedIn for engineers/hiring managers at the company</li>
+                    <li>Use "Add Manually" above to enter contacts you find</li>
+                  </ul>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">
