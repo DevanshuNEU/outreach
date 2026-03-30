@@ -2,6 +2,7 @@ import uuid
 import json
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from app.database import get_db
 from app.auth.deps import get_current_user
 from app.models.schemas import TemplateCreate, TemplateUpdate, TemplateOut
@@ -43,6 +44,58 @@ Use ONLY the candidate's actual projects and metrics. Do not invent numbers or s
 Every template must feel like it was written for THIS person, not a generic template.
 
 Output strict JSON array with 8 objects. No commentary outside the JSON."""
+
+
+class SuggestTemplateRequest(BaseModel):
+    company_name: str
+    job_description: str
+
+    class Config:
+        extra = "allow"
+
+
+@router.post("/suggest")
+def suggest_template(
+    req: SuggestTemplateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Analyze a JD and return the best matching template for this user."""
+    db = get_db()
+    templates_res = (
+        db.table("role_templates")
+        .select("id,slug,title")
+        .eq("user_id", current_user["id"])
+        .execute()
+    )
+    if not templates_res.data:
+        raise HTTPException(404, "No templates found — complete onboarding first")
+
+    slugs = [t["slug"] for t in templates_res.data]
+    slug_descriptions = {
+        "rag": "retrieval, embeddings, vector search, RAG pipelines",
+        "ai-ml": "ML engineering, model training, AI products, LLM applications",
+        "context": "context engineering, prompt engineering, AI grounding",
+        "cloud": "DevOps, SRE, platform engineering, Kubernetes, Terraform, infrastructure",
+        "fde": "forward-deployed, solutions engineering, customer-facing technical roles",
+        "backend": "APIs, distributed systems, databases, backend services, microservices, payments",
+        "fullstack": "frontend + backend, product engineering, full-stack web",
+        "swe": "general software engineering, doesn't fit cleanly into above",
+    }
+    slug_list = "\n".join(
+        f"- {s}: {slug_descriptions.get(s, s)}" for s in slugs
+    )
+
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=15,
+        system=f"Pick the single best template slug for this job description.\n\nAvailable slugs:\n{slug_list}\n\nReturn ONLY the slug. One word. Nothing else.",
+        messages=[{"role": "user", "content": f"Company: {req.company_name}\n\nJob Description:\n{req.job_description[:2000]}"}],
+    )
+
+    suggested_slug = response.content[0].text.strip().lower().split()[0]
+    match = next((t for t in templates_res.data if t["slug"] == suggested_slug), templates_res.data[0])
+    return {"template_id": match["id"], "slug": match["slug"], "title": match["title"]}
 
 
 @router.get("", response_model=list[TemplateOut])

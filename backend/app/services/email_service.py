@@ -1,3 +1,5 @@
+import json
+import re
 import anthropic
 from app.config import settings
 from app.database import get_db
@@ -58,7 +60,7 @@ The care check: Read the email as the recipient. Is there one sentence that only
 4. THE ASK (1 sentence): Confident. Brief. Equal footing. Vary the phrasing. Options: "15 minutes?", "Worth a call this week?", "Up for a quick call?", "Want to compare notes?", "Coffee chat sometime?" Never "if you have time." Never the same CTA every email.
 
 ━━ SUBJECT LINES ━━
-About THEIR product or problem. Not about you. Create a curiosity gap or make a specific claim. Under 60 characters. The best subject lines make the reader think "how do they know that?" before they open.
+About THEIR product or problem. Not about you. Create a curiosity gap or make a specific claim. HARD LIMIT: 60 characters. Count every character including spaces. If it's 61, cut a word. The best subject lines make the reader think "how do they know that?" before they open.
 
 ━━ LENGTH ━━
 STRICT 120 WORD MAXIMUM for the body. Count every word. If you hit 121, cut. No exceptions.
@@ -115,6 +117,37 @@ Write the LinkedIn connection request note now. Under 300 characters. Output onl
     return note
 
 
+JD_INSIGHT_PROMPT = """Analyze this job description and extract 3 company-specific hooks for a cold email.
+
+Be surgical. What's unique to THIS team at THIS company? Not generic truths about the industry.
+
+Return ONLY valid JSON:
+{
+  "hook": "<1 tight sentence: what is this specific team building RIGHT NOW. Reference actual product names, interfaces, or technical decisions from the JD. If it could apply to any other company, rewrite until it can't.>",
+  "challenge": "<the core engineering problem this role exists to solve, in 1 sentence. Be specific.>",
+  "connection": "<the single sharpest angle to connect the candidate's RAG/backend/infra work to this specific role. Be direct, not generic.>"
+}"""
+
+
+def _extract_jd_insights(client: anthropic.Anthropic, company_name: str, job_description: str) -> dict:
+    """Pre-step: extract company-specific hooks from JD before writing the email."""
+    try:
+        r = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=350,
+            system=JD_INSIGHT_PROMPT,
+            messages=[{"role": "user", "content": f"Company: {company_name}\n\nJob Description:\n{job_description[:3000]}"}],
+        )
+        raw = r.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw.strip())
+    except Exception:
+        return {}  # graceful fallback — email still drafts without it
+
+
 async def draft_email(
     user_id: str,
     job_description: str | None,
@@ -128,6 +161,11 @@ async def draft_email(
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
+    # Pre-step: extract company-specific hooks from the JD
+    jd_insights = {}
+    if job_description:
+        jd_insights = _extract_jd_insights(client, company_name, job_description)
+
     system = BASE_SYSTEM_PROMPT + "\n\n" + role_prompt_addition
 
     user_msg = f"Company: {company_name}\n"
@@ -135,6 +173,18 @@ async def draft_email(
         user_msg += f"Company info: {company_info}\n"
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
+
+    # Inject JD insights as a research brief to force a specific hook
+    if jd_insights:
+        user_msg += "\n━━ RESEARCH BRIEF (use these to write the hook — must be specific to this company) ━━\n"
+        if jd_insights.get("hook"):
+            user_msg += f"What they're building: {jd_insights['hook']}\n"
+        if jd_insights.get("challenge"):
+            user_msg += f"Core challenge: {jd_insights['challenge']}\n"
+        if jd_insights.get("connection"):
+            user_msg += f"Best connection angle: {jd_insights['connection']}\n"
+        user_msg += "━━ Use the above to write a hook that ONLY applies to this company. ━━\n"
+
     user_msg += f"\nMy Background:\n{background}\n"
     if projects:
         user_msg += "\nMy Projects:\n"
@@ -148,11 +198,11 @@ async def draft_email(
             user_msg += "\n"
     user_msg += f"\nLinks block (append at end):\n{links_block}\n"
     user_msg += f"\nSign-off (append at end):\n{sign_off_block}\n"
-    user_msg += "\nDraft the cold email now. Output ONLY Subject: line then body. No commentary. Body must be 120 words or fewer. Count before you output."
+    user_msg += "\nDraft the cold email now. Output ONLY Subject: line then body. No commentary. Subject line: 60 characters MAX — count before writing. Body: 120 words MAX — count before writing."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=600,
         system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_msg}],
     )
@@ -166,6 +216,9 @@ async def draft_email(
         lines = text.split("\n", 1)
         subject = lines[0].replace("Subject:", "").strip()
         body = lines[1].strip() if len(lines) > 1 else ""
+
+    # Strip leading separator artifacts (--- or ___) Claude sometimes adds
+    body = re.sub(r'^[-_]{3,}\s*\n+', '', body).strip()
 
     # Generate LinkedIn note using the drafted email as context
     linkedin_note = await generate_linkedin_note(

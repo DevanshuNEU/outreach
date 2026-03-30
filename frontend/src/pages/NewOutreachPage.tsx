@@ -56,6 +56,7 @@ export function NewOutreachPage() {
   // Step 2: Template
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [suggestedTemplateId, setSuggestedTemplateId] = useState("");
 
   // Step 3: Draft
   const [emailSubject, setEmailSubject] = useState("");
@@ -127,7 +128,24 @@ export function NewOutreachPage() {
       job_title: jobTitle || undefined,
       job_description: jobDescription || undefined,
     });
-    setApplicationId(appRes.data.id);
+    const appId = appRes.data.id;
+    setApplicationId(appId);
+
+    // Auto-suggest best template from JD (non-blocking — proceed even if it fails)
+    if (jobDescription.trim()) {
+      try {
+        const suggestRes = await api.post("/api/templates/suggest", {
+          company_name: companyName,
+          job_description: jobDescription,
+        });
+        const tid = suggestRes.data.template_id;
+        setSuggestedTemplateId(tid);
+        setSelectedTemplate(tid);
+      } catch {
+        // silence — user picks manually
+      }
+    }
+
     setStep("template");
   };
 
@@ -263,11 +281,26 @@ export function NewOutreachPage() {
               </div>
               <div className="space-y-2">
                 <Label>Location</Label>
-                <Input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="San Francisco, CA"
-                />
+                <div className="relative">
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="San Francisco, CA"
+                    list="location-suggestions"
+                  />
+                  <datalist id="location-suggestions">
+                    <option value="San Francisco, CA" />
+                    <option value="New York, NY" />
+                    <option value="Seattle, WA" />
+                    <option value="Boston, MA" />
+                    <option value="Austin, TX" />
+                    <option value="Los Angeles, CA" />
+                    <option value="Chicago, IL" />
+                    <option value="Denver, CO" />
+                    <option value="Atlanta, GA" />
+                    <option value="Remote" />
+                  </datalist>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -312,7 +345,14 @@ export function NewOutreachPage() {
       {step === "template" && (
         <Card>
           <CardHeader>
-            <CardTitle>Select Role Template</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Select Role Template</span>
+              {suggestedTemplateId && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  ✦ AI suggested based on JD
+                </span>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -320,12 +360,17 @@ export function NewOutreachPage() {
                 <button
                   key={t.id}
                   onClick={() => setSelectedTemplate(t.id)}
-                  className={`p-4 rounded-lg border text-left transition-all ${
+                  className={`p-4 rounded-lg border text-left transition-all relative ${
                     selectedTemplate === t.id
                       ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                       : "border-border hover:border-primary/50"
                   }`}
                 >
+                  {t.id === suggestedTemplateId && (
+                    <span className="absolute top-2 right-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                      Suggested
+                    </span>
+                  )}
                   <div className="flex items-center gap-2 mb-1">
                     <div
                       className="w-2 h-2 rounded-full"
