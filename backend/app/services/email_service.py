@@ -119,26 +119,49 @@ Write the LinkedIn connection request note now. Under 300 characters. End with m
     return note
 
 
-JD_INSIGHT_PROMPT = """Analyze this job description and extract 3 company-specific hooks for a cold email.
+JD_INSIGHT_PROMPT = """You are preparing a cold email for a software engineer. Analyze the job description and the candidate's project list.
 
-Be surgical. What's unique to THIS team at THIS company? Not generic truths about the industry.
+Two tasks:
+1. Extract what is SPECIFIC to this company and role (not generic industry truths)
+2. Pick the 1-2 projects from the candidate's list that map MOST directly to this JD
+
+Matching rules:
+- Tokenization/encoding/BPE work in JD → pick projects with tokenization or token-level work
+- Browser runtime/JavaScript/SSR/edge → pick browser or frontend-heavy projects
+- DevOps/infra/Kubernetes/Terraform → pick infra projects
+- Developer tooling/CLI/AI coding assistants → pick CLI or tooling projects
+- RAG/retrieval/embeddings/vector search → pick retrieval projects
+- General backend/distributed systems → pick backend projects
+- NEVER default to the biggest or most impressive project. Pick the most RELEVANT one.
 
 Return ONLY valid JSON:
 {
-  "hook": "<1 tight sentence: what is this specific team building RIGHT NOW. Reference actual product names, interfaces, or technical decisions from the JD. If it could apply to any other company, rewrite until it can't.>",
-  "challenge": "<the core engineering problem this role exists to solve, in 1 sentence. Be specific.>",
-  "connection": "<the single sharpest angle to connect the candidate's RAG/backend/infra work to this specific role. Be direct, not generic.>"
+  "hook": "<1 tight sentence: what this team is specifically building. Reference actual product names, tech choices, or scale challenges from the JD. Cannot apply to any other company.>",
+  "challenge": "<the core engineering problem this role exists to solve, 1 sentence>",
+  "lead_projects": ["<project name 1>", "<project name 2 if truly relevant>"],
+  "lead_reason": "<why these projects specifically, not others, for this role — 1 sentence>"
 }"""
 
 
-def _extract_jd_insights(client: anthropic.Anthropic, company_name: str, job_description: str) -> dict:
-    """Pre-step: extract company-specific hooks from JD before writing the email."""
+def _extract_jd_insights(
+    client: anthropic.Anthropic,
+    company_name: str,
+    job_description: str,
+    project_names: list[str],
+) -> dict:
+    """Pre-step: analyze JD + pick the best-matching projects before writing the email."""
     try:
+        project_list = "\n".join(f"- {n}" for n in project_names) if project_names else "No projects listed"
+        msg = (
+            f"Company: {company_name}\n\n"
+            f"Job Description:\n{job_description[:3000]}\n\n"
+            f"Candidate's projects (pick 1-2 that best match the JD):\n{project_list}"
+        )
         r = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=350,
+            max_tokens=400,
             system=JD_INSIGHT_PROMPT,
-            messages=[{"role": "user", "content": f"Company: {company_name}\n\nJob Description:\n{job_description[:3000]}"}],
+            messages=[{"role": "user", "content": msg}],
         )
         raw = r.content[0].text.strip()
         if raw.startswith("```"):
@@ -164,10 +187,11 @@ async def draft_email(
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    # Pre-step: extract company-specific hooks from the JD
+    # Pre-step: analyze JD + pick best-matching projects
+    project_names = [p.get("name", "") for p in (projects or []) if isinstance(p, dict) and p.get("name")]
     jd_insights = {}
     if job_description:
-        jd_insights = _extract_jd_insights(client, company_name, job_description)
+        jd_insights = _extract_jd_insights(client, company_name, job_description, project_names)
 
     system = BASE_SYSTEM_PROMPT + "\n\n" + role_prompt_addition
 
@@ -177,16 +201,20 @@ async def draft_email(
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
 
-    # Inject JD insights as a research brief — advisory context for the hook
+    # Inject JD insights — project selection is a hard instruction, rest is advisory
     if jd_insights:
         user_msg += "\n━━ RESEARCH BRIEF ━━\n"
         if jd_insights.get("hook"):
             user_msg += f"What they're specifically building: {jd_insights['hook']}\n"
         if jd_insights.get("challenge"):
-            user_msg += f"Core engineering challenge: {jd_insights['challenge']}\n"
-        if jd_insights.get("connection"):
-            user_msg += f"Suggested connection angle (use only if it's stronger than your template's default story — otherwise use the template): {jd_insights['connection']}\n"
-        user_msg += "The hook MUST be specific to this company. If another company could fit, rewrite it.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            user_msg += f"Core challenge: {jd_insights['challenge']}\n"
+        lead = jd_insights.get("lead_projects", [])
+        if lead:
+            user_msg += f"\nLEAD PROJECT INSTRUCTION (hard rule): Build the email story around: {', '.join(lead)}\n"
+            if jd_insights.get("lead_reason"):
+                user_msg += f"Why: {jd_insights['lead_reason']}\n"
+            user_msg += "Do NOT default to a different project just because it has more metrics. Use the project that fits THIS role.\n"
+        user_msg += "Hook must be specific to this company only. Rewrite until no other company could fit.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     user_msg += f"\nMy Background:\n{background}\n"
     if projects:
@@ -199,9 +227,8 @@ async def draft_email(
             if metrics:
                 user_msg += f" ({metrics})"
             user_msg += "\n"
-    user_msg += f"\nLinks block (append at end):\n{links_block}\n"
-    user_msg += f"\nSign-off (append at end):\n{sign_off_block}\n"
-    user_msg += "\nDraft the cold email now. Output ONLY Subject: line then body. No commentary. Subject line: 60 characters MAX — count before writing. Body: 120 words MAX — count before writing."
+    user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
+    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. Subject: 60 chars MAX. Body: 120 words MAX."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
