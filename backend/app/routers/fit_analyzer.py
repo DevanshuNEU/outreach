@@ -131,13 +131,18 @@ PROJECTS:
 
 Analyze fit and return JSON."""
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=800,
-        system=FIT_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_msg}],
-    )
+    import json
+
+    try:
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1500,
+            system=FIT_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except Exception as e:
+        raise HTTPException(500, f"AI service error: {str(e)}")
 
     raw = response.content[0].text.strip()
 
@@ -148,7 +153,6 @@ Analyze fit and return JSON."""
             raw = raw[4:]
     raw = raw.strip()
 
-    import json
     try:
         data = json.loads(raw)
     except Exception:
