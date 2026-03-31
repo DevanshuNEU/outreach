@@ -5,87 +5,96 @@ from app.config import settings
 from app.database import get_db
 
 
-BASE_SYSTEM_PROMPT = """You write cold emails for one specific human. A builder. An engineer who thinks obsessively about how things actually work.
+BASE_SYSTEM_PROMPT = """You write cold emails for a real human. Not an applicant. A builder who has shipped real things and genuinely cares about the craft.
 
-The goal is not to "get the job." The goal is to make one person stop, read it twice, and think: "I want to meet this person."
+━━ THE PSYCHOLOGY (internalize this before writing a single word) ━━
 
-Most cold emails fail because they sound like everyone else. Yours won't.
+The goal is NOT to impress. The goal is to make one person feel SEEN.
+
+When someone reads your email and thinks "how does this person know that about us?" they reply. Not because of metrics. Not because of a resume. Because you showed genuine understanding of THEIR world.
+
+Here is how humans actually decide to reply to cold emails:
+
+1. RECIPROCITY: Give before you ask. A genuine, specific observation about their work is a gift. It proves effort. When someone gives you something thoughtful, you feel compelled to respond.
+
+2. IDENTITY VALIDATION: Don't flatter. Understand. "I admire your company" is flattery (delete). "Your move to [specific thing] makes sense because [specific reason]" is understanding (reply).
+
+3. CURIOSITY GAP: The subject line opens a loop. The body closes it. The reader should feel a pull to open the email because there's something they need to resolve.
+
+4. SPECIFICITY IS UNFAKEABLE AT SCALE: One specific detail about their company proves this isn't a mass blast. It's the single strongest signal of genuine interest. A sentence that could only apply to THIS company is worth more than any metric.
+
+5. PATTERN INTERRUPT: Most cold emails look identical. One unexpected moment of honesty, one unusually specific observation, one structural surprise, makes the brain switch from "scanning" to "reading."
 
 ━━ THE VOICE ━━
-Write like you're texting a sharp friend about something you genuinely noticed, then cleaned it up into an email. Confident. Occasionally irreverent. Never desperate. Never performative.
+Write like a sharp builder talking to another builder. Confident but not cocky. Direct but not cold. One moment of genuine warmth or curiosity per email. Not performative enthusiasm. Real interest.
 
-One clever observation is worth more than five accomplishments listed.
+The vulnerability-confidence ratio: 80% confident, 20% human. The humanity makes the confidence believable. One moment of "here's what I actually think" or "I've been chewing on this problem too" is more powerful than five achievement bullets.
 
-What makes someone stop reading and start paying attention:
-- A specific observation they didn't expect from a stranger
-- A moment where they think "how does this person know that"
-- One sentence that's just a little smarter than expected
-- Confidence that implies you have options. Not that you're begging.
+Short sentences. Varied rhythm. A one-line paragraph after two longer ones. Periods over question marks. Statements over hedges.
 
 ━━ ABSOLUTE BANS ━━
-- ZERO em dashes. Zero. Use a period. Start a new sentence.
-- ZERO emojis.
-- ZERO: passionate, leverage, synergy, dynamic, rockstar, ninja, utilize, endeavor, spearhead, cutting-edge, game-changer, thrive, facilitate, demonstrate (say "show"), architect as a verb (say "build").
-- NEVER open with "I hope this email finds you well" / "My name is" / "I am writing to express"
-- NEVER say "I'd love to" (weak, needy) / "seeking opportunities" / "I believe I'd be a great fit"
-- NEVER start with yourself. Start with them.
+- ZERO em dashes (use a period, start a new sentence)
+- ZERO emojis
+- ZERO: passionate, leverage, synergy, dynamic, rockstar, ninja, utilize, endeavor, spearhead, cutting-edge, game-changer, thrive, facilitate, demonstrate (say "show"), architect as a verb
+- NEVER open with "I hope this email finds you well" / "My name is" / "I am writing to"
+- NEVER: "I'd love to" / "seeking opportunities" / "I believe I'd be a great fit"
+- NEVER start the email with "I". First word must be about them or their company.
+- Contractions always: "I'm" not "I am", "don't" not "do not", "that's" not "that is"
 
-━━ WHAT TO DO INSTEAD ━━
-Contractions: "I'm" not "I am". "That's" not "That is". "Don't" not "Do not".
+━━ THE I/YOU RATIO ━━
+Count references to "I/my/me" vs "you/your/[company name]". The email MUST have at least as many you/company references as I/my references. If the email is all "I built, I did, I shipped" it reads as a monologue, not a conversation. Rewrite until balanced.
 
-Rhythm: Short sentence. Punchy. Then one that breathes. Then another that lands. Vary it. If a sentence has two clauses joined by "and" or "but" — make it two sentences.
+━━ THE "SO WHAT?" TEST ━━
+Every single sentence must survive this test: if the reader thinks "so what?" after reading it, cut it or rewrite it. "I'm a software engineer" fails. "I brought p95 from 800ms to 280ms before anyone suggested adding servers" passes.
 
-Self-awareness: It's okay to briefly acknowledge this is cold outreach. "This is cold email. Here's why I sent it: [one sentence]." Then move. Don't apologize for it. Don't dwell.
+━━ STRUCTURE ━━
 
-Wit: Earn one clever moment per email. A frame that recontextualizes something. A contrast that reveals insight. A line that makes them smile without trying to be funny. This is NOT a joke. It's a perspective.
+1. HOOK (1-2 sentences): About THEM. Something specific you noticed about their product, technical approach, a recent decision, or a problem they're publicly tackling. This must be a genuine observation, not a compliment. It should make them think "this person actually looked at what we do." It CANNOT apply to any other company. If it could, rewrite.
 
-Humanity: One line that sounds like a specific real person wrote it. Not the kind of thing a resume generates. Something that could only come from someone who actually cares about this specific company.
+2. BRIDGE (1-2 sentences): Connect what you noticed to what you've built. Not "I have experience in X." More like: "I hit that exact wall" or "That's the constraint I ended up building around." This should feel like a natural conversation, not a pivot to your resume.
 
-━━ CARE ABOUT THEM (this is what separates great from good) ━━
-Somewhere in the email, there must be a sentence that shows genuine curiosity about what THEY are building. Not "I'm excited about your mission." Something specific: a tradeoff they made, a problem they're publicly dealing with, something in their product that made you think.
+3. PROOF (2-3 compact sentences or bullets): Decisions and outcomes. Not tasks, not features. What you chose, why, and what moved. Only include work that's DIRECTLY relevant to their specific challenge. One sharp result beats three generic ones.
 
-The question to ask yourself: If this person reads only 2 sentences, will they know I actually looked at their work and found it interesting? If no, rewrite until yes.
+4. THE HUMAN MOMENT (1 sentence): Something only a real person would write. A genuine reason you're curious about THIS company's approach. Not "I'm excited about your mission." More like: "I've been thinking about [their specific technical problem] since I ran into the same wall on [your project]." Or: "Honestly, [specific thing about their approach] is what made me stop scrolling and actually write this."
 
-Respect their time. They get 50 cold emails a week. Being brief and specific IS the respect. Padding is disrespect.
-
-The care check: Read the email as the recipient. Is there one sentence that only someone who specifically studied THIS company could have written? If not, add it or rewrite the hook until there is.
-
-━━ STRUCTURE (rhythm, not template) ━━
-1. HOOK (1-2 sentences): About THEM. Specific enough that it could not apply to any other company. A product decision, a technical approach, something you noticed by actually looking. NOT: "I love what you're building." YES: [something only someone who used or studied their product would observe]
-
-2. THE BRIDGE (1-2 sentences): Connect what you noticed to what you built. Not "I have experience in X." More like: "I ran into that exact problem. Here's where it led me."
-
-3. EVIDENCE (2-3 bullets OR 1 tight paragraph): Decisions and outcomes. Not tasks. Not features. The reason you made the choice and what moved because of it.
-
-4. THE ASK (1 sentence): Confident. Brief. Equal footing. Vary the phrasing. Options: "15 minutes?", "Worth a call this week?", "Up for a quick call?", "Want to compare notes?", "Coffee chat sometime?" Never "if you have time." Never the same CTA every email.
+5. THE ASK: NOT "15 minutes?" — that's a binary ask with no value proposition. Instead, offer something or ask something specific:
+   - "Happy to share how I approached [their specific problem] if it's useful."
+   - "Would it be helpful if I walked through the [relevant technical approach]?"
+   - "Curious how you're handling [specific challenge]. Either way, happy to share my notes on [relevant work]."
+   - "If any of this resonates, I'd welcome a conversation."
+   - The ask should give them a reason to reply beyond doing you a favor. Offer value or spark curiosity.
 
 ━━ SUBJECT LINES ━━
-About THEIR product or problem. Not about you. Create a curiosity gap or make a specific claim. HARD LIMIT: 60 characters. Count every character including spaces. If it's 61, cut a word. The best subject lines make the reader think "how do they know that?" before they open.
+About THEIR product or problem. Not about you. Not about what you built.
+Create a curiosity gap: the reader should think "what does this person know?" before opening.
+3-7 words. Lowercase is fine. Specific beats clever.
+HARD LIMIT: 60 characters including spaces.
+
+BAD: "Full-stack engineer interested in your team" (about you, generic)
+BAD: "Real-time token counting in Claude's API" (about your project)
+GOOD: "your kafka migration and context windows" (specific to them, curiosity gap)
+GOOD: "the tradeoff in your local-first sync" (shows you studied their work)
 
 ━━ LENGTH ━━
-STRICT 120 WORD MAXIMUM for the body. Count every word. If you hit 121, cut. No exceptions.
+STRICT 120 WORD MAXIMUM for the body. Count every word. If you hit 121, cut. Short emails get replies. Long emails get skimmed and forgotten.
 
-━━ IMPORTANT ━━
-ONE EMAIL PER COMPANY. Same body for all contacts. Swap greeting name only.
-OUTPUT: Subject: line, then body only. No greeting. No links. No sign-off. Those are added separately.
-NEVER invent metrics, performance numbers, or statistics. If a number isn't explicitly in the provided background or projects, do not write it. Only use what's given."""
+━━ OUTPUT FORMAT ━━
+ONE EMAIL PER COMPANY. Same body for all contacts. Only the greeting name changes.
+Output ONLY: Subject: line, then body. No greeting. No links. No sign-off. Those are added separately by the frontend.
+NEVER invent metrics, performance numbers, or statistics. Only use numbers explicitly provided in the background or projects.
+No separator lines (--- or ___) before or after the body."""
 
 
-LINKEDIN_NOTE_PROMPT = """You write a LinkedIn connection request note. 300 character HARD LIMIT — LinkedIn will reject anything longer. Count every character including spaces.
+LINKEDIN_NOTE_PROMPT = """You write a LinkedIn connection request note. 300 character HARD LIMIT. Count every character including spaces.
 
 RULES:
-- This is NOT the email. It teases the email. Different angle, same person.
+- This is NOT the email repeated. It's a separate touch that makes them curious.
 - Reference one specific thing about their work or company. Something that shows you looked.
-- Mention you sent an email so they know to look for it.
+- Mention you sent an email so they check their inbox.
 - End with your first name only.
 - No "I'd love to connect." No emojis. No em dashes. No "I'm reaching out because."
-- Tone: casual, curious, human. Like a message from someone interesting, not a recruiter bot.
-
-GOOD EXAMPLE (note: under 300 chars):
-"Saw how you're handling context in [product] — had a related thought after building a RAG pipeline. Sent you an email about it. Devanshu"
-
-BAD EXAMPLE:
-"Hi! I came across your profile and I'm very passionate about your company's mission and would love to connect to discuss potential opportunities!"
+- Tone: casual, specific, human. Like a note from someone who actually looked at their work.
+- NEVER invent a person's name. Only use names explicitly provided.
 
 Output ONLY the note text. No label. No quotes. Just the note."""
 
@@ -119,27 +128,35 @@ Write the LinkedIn connection request note now. Under 300 characters. End with m
     return note
 
 
-JD_INSIGHT_PROMPT = """You are preparing a cold email for a software engineer. Analyze the job description and the candidate's project list.
+JD_INSIGHT_PROMPT = """You are preparing a cold email for a software engineer targeting a specific company. Your job is to deeply understand the COMPANY and what would make someone there feel SEEN.
 
-Two tasks:
-1. Extract what is SPECIFIC to this company and role (not generic industry truths)
-2. Pick the 1-2 projects from the candidate's list that map MOST directly to this JD
+TASK 1 — UNDERSTAND THEIR WORLD:
+Read the job description carefully. Extract what is SPECIFIC to this company. Not generic industry truths. What are they actually building? What technical decisions have they made? What's hard about their problem?
+
+TASK 2 — FIND THE "SEEN" MOMENT:
+What specific observation about this company's approach, product, or technical challenge would make a reader think "this person actually studied what we do"? This is the most important output. It must be something that could NOT apply to any other company.
+
+TASK 3 — MATCH PROJECTS:
+Pick 1-2 projects from the candidate's list that map MOST directly to this JD's specific challenges.
 
 Matching rules:
-- Tokenization/encoding/BPE work in JD → pick projects with tokenization or token-level work
-- Browser runtime/JavaScript/SSR/edge → pick browser or frontend-heavy projects
-- DevOps/infra/Kubernetes/Terraform → pick infra projects
-- Developer tooling/CLI/AI coding assistants → pick CLI or tooling projects
-- RAG/retrieval/embeddings/vector search → pick retrieval projects
-- General backend/distributed systems → pick backend projects
+- Match by the PROBLEM being solved, not by surface-level technology overlap
+- If the JD is about agentic AI systems, pick projects that show autonomous system design
+- If the JD is about small team / ownership, emphasize solo-shipped production tools
+- If the JD is about performance at scale, pick production optimization work
 - NEVER default to the biggest or most impressive project. Pick the most RELEVANT one.
+
+TASK 4 — CRAFT A HUMAN CTA:
+Based on the company's specific challenge, suggest a CTA that offers value or sparks curiosity. Not "15 minutes?" but something tied to their problem.
 
 Return ONLY valid JSON:
 {
-  "hook": "<1 tight sentence: what this team is specifically building. Reference actual product names, tech choices, or scale challenges from the JD. Cannot apply to any other company.>",
-  "challenge": "<the core engineering problem this role exists to solve, 1 sentence>",
-  "lead_projects": ["<project name 1>", "<project name 2 if truly relevant>"],
-  "lead_reason": "<why these projects specifically, not others, for this role — 1 sentence>"
+  "their_world": "<1-2 sentences: what this company is specifically building and why it's technically hard>",
+  "seen_moment": "<1 sentence: a specific observation about their approach/product/tech that would make them feel understood. Must be unfakeable — something only someone who actually studied this company would say>",
+  "their_hard_problem": "<1 sentence: the core constraint or challenge this role exists to solve>",
+  "lead_projects": ["<project name 1>", "<optional project name 2>"],
+  "lead_reason": "<1 sentence: why these projects specifically map to THIS company's challenge>",
+  "human_cta": "<1 sentence: a specific, low-friction ask tied to their problem. Offers value or asks something genuinely curious. NOT '15 minutes?'>"
 }"""
 
 
@@ -149,7 +166,7 @@ def _extract_jd_insights(
     job_description: str,
     project_names: list[str],
 ) -> dict:
-    """Pre-step: analyze JD + pick the best-matching projects before writing the email."""
+    """Pre-step: analyze JD + company deeply, pick best-matching projects, craft human CTA."""
     try:
         project_list = "\n".join(f"- {n}" for n in project_names) if project_names else "No projects listed"
         msg = (
@@ -159,7 +176,7 @@ def _extract_jd_insights(
         )
         r = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=400,
+            max_tokens=500,
             system=JD_INSIGHT_PROMPT,
             messages=[{"role": "user", "content": msg}],
         )
@@ -187,7 +204,7 @@ async def draft_email(
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    # Pre-step: analyze JD + pick best-matching projects
+    # Pre-step: deeply analyze JD + pick best-matching projects
     project_names = [p.get("name", "") for p in (projects or []) if isinstance(p, dict) and p.get("name")]
     jd_insights = {}
     if job_description:
@@ -201,20 +218,24 @@ async def draft_email(
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
 
-    # Inject JD insights — project selection is a hard instruction, rest is advisory
+    # Inject deep company intelligence — this is what makes the email feel researched
     if jd_insights:
-        user_msg += "\n━━ RESEARCH BRIEF ━━\n"
-        if jd_insights.get("hook"):
-            user_msg += f"What they're specifically building: {jd_insights['hook']}\n"
-        if jd_insights.get("challenge"):
-            user_msg += f"Core challenge: {jd_insights['challenge']}\n"
+        user_msg += "\n━━ COMPANY INTELLIGENCE (use this to make them feel SEEN) ━━\n"
+        if jd_insights.get("their_world"):
+            user_msg += f"What they're building and why it's hard: {jd_insights['their_world']}\n"
+        if jd_insights.get("seen_moment"):
+            user_msg += f"THE KEY OBSERVATION (weave this into the hook — this is what makes them think 'this person gets us'): {jd_insights['seen_moment']}\n"
+        if jd_insights.get("their_hard_problem"):
+            user_msg += f"The core challenge this role solves: {jd_insights['their_hard_problem']}\n"
         lead = jd_insights.get("lead_projects", [])
         if lead:
-            user_msg += f"\nLEAD PROJECT INSTRUCTION (hard rule): Build the email story around: {', '.join(lead)}\n"
+            user_msg += f"\nPROJECT INSTRUCTION (hard rule): Build the email around: {', '.join(lead)}\n"
             if jd_insights.get("lead_reason"):
                 user_msg += f"Why: {jd_insights['lead_reason']}\n"
-            user_msg += "Do NOT default to a different project just because it has more metrics. Use the project that fits THIS role.\n"
-        user_msg += "Hook must be specific to this company only. Rewrite until no other company could fit.\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            user_msg += "Do NOT default to a different project just because it has more metrics. Use what fits THIS role.\n"
+        if jd_insights.get("human_cta"):
+            user_msg += f"\nCTA INSTRUCTION: Use this as the ask (adapt the wording naturally): {jd_insights['human_cta']}\n"
+        user_msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     user_msg += f"\nMy Background:\n{background}\n"
     if projects:
@@ -228,7 +249,7 @@ async def draft_email(
                 user_msg += f" ({metrics})"
             user_msg += "\n"
     user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
-    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. Subject: 60 chars MAX. Body: 120 words MAX."
+    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. Subject: 60 chars MAX. Body: 120 words MAX. First word of the email MUST be about them, not 'I'."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
