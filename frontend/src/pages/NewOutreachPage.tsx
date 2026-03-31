@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,7 @@ type Step = "input" | "template" | "draft" | "contacts" | "send";
 
 export function NewOutreachPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>("input");
 
   // Step 1: Input
@@ -101,6 +102,16 @@ export function NewOutreachPage() {
       setLinksBlock(r.data.links_block || "");
     });
   }, []);
+
+  // Pre-fill from Fit Analyzer or other sources via URL params
+  useEffect(() => {
+    const company = searchParams.get("company");
+    const title = searchParams.get("jobTitle");
+    const jd = searchParams.get("jd");
+    if (company) setCompanyName(company);
+    if (title) setJobTitle(title);
+    if (jd) setJobDescription(jd);
+  }, [searchParams]);
 
   useEffect(() => {
     if (step === "contacts") {
