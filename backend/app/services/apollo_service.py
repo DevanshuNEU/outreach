@@ -346,13 +346,10 @@ async def find_contacts(
             print(f"  skip {name}: email_status={email_status!r}")
             continue
 
-        # ── Layer 3: org ID cross-check ───────────────────────────────────────
-        # Apollo returns organization_id on enriched people. If it's present and
-        # doesn't match what we searched for, this person works somewhere else.
-        person_org_id = person.get("organization_id") or person.get("employment_history", [{}])[0].get("organization_id") if person.get("employment_history") else person.get("organization_id")
-        if person_org_id and person_org_id != organization_id:
-            print(f"  SAFETY SKIP {name}: person.organization_id={person_org_id!r} != searched {organization_id!r}")
-            continue
+        # ── Layer 3: org ID cross-check (skipped — subsidiaries break this) ─────
+        # Large companies like Qualcomm have employees tagged under parent org IDs
+        # that differ from the subsidiary we searched. Email domain check below
+        # is sufficient protection against wrong-company contacts.
 
         # ── Layer 3b: email domain cross-check ───────────────────────────────
         # If we have domain info and the email domain doesn't match at all, reject.
