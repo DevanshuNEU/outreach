@@ -57,12 +57,12 @@ Every single sentence must survive this test: if the reader thinks "so what?" af
 
 4. THE HUMAN MOMENT (1 sentence): Something only a real person would write. A genuine reason you're curious about THIS company's approach. Not "I'm excited about your mission." More like: "I've been thinking about [their specific technical problem] since I ran into the same wall on [your project]." Or: "Honestly, [specific thing about their approach] is what made me stop scrolling and actually write this."
 
-5. THE ASK: NOT "15 minutes?" — that's a binary ask with no value proposition. Instead, offer something or ask something specific:
-   - "Happy to share how I approached [their specific problem] if it's useful."
-   - "Would it be helpful if I walked through the [relevant technical approach]?"
-   - "Curious how you're handling [specific challenge]. Either way, happy to share my notes on [relevant work]."
-   - "If any of this resonates, I'd welcome a conversation."
-   - The ask should give them a reason to reply beyond doing you a favor. Offer value or spark curiosity.
+5. THE ASK: Always end with a CLEAR ask for a conversation. The reader must know you want to talk. But make it specific, not generic.
+   - "Would love to chat about how you're handling [specific challenge]. Open to a quick call this week?"
+   - "If any of this resonates, I'd welcome 15 minutes to dig into [specific topic]."
+   - "Happy to walk through how I approached [their problem]. Worth a quick call?"
+   - ALWAYS ask for the call/conversation. Do NOT end with just a question about their work. The goal is a meeting, not an intellectual discussion.
+   - Keep it one sentence. Confident, direct. Not needy.
 
 ━━ SUBJECT LINES ━━
 About THEIR product or problem. Not about you. Not about what you built.
@@ -176,7 +176,7 @@ Return ONLY valid JSON:
   "lead_projects": ["<project name 1>", "<optional project name 2>"],
   "lead_reason": "<1 sentence: why these projects map to this challenge. If weak match, say so honestly>",
   "builder_angle": "<if match_quality is weak: 1 sentence about the builder story to lead with instead. e.g. 'Solo-shipped 3 production tools, each solving a different hard problem. Ownership mentality.'>",
-  "human_cta": "<1 sentence: a specific, low-friction ask tied to their problem. Offers value or asks something genuinely curious. NOT '15 minutes?'>"
+  "human_cta": "<1 sentence: ask for a conversation/call tied to their specific challenge. MUST ask for time, not just ask a question. e.g. 'Would love to chat about how you handle X. Open to a quick call?' Keep it confident and direct.>"
 }"""
 
 
