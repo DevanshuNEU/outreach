@@ -55,14 +55,13 @@ Every single sentence must survive this test: if the reader thinks "so what?" af
 
 3. PROOF (2-3 compact sentences): ONE project. The single most relevant one. Go deep on the decision and outcome. Do NOT mention a second project unless it is genuinely, directly relevant to their specific challenge. If in doubt, leave it out. One deep story beats two shallow mentions every time.
 
-4. THE HUMAN MOMENT (1 sentence): Something only a real person would write. A genuine reason you're curious about THIS company's approach. Not "I'm excited about your mission." More like: "I've been thinking about [their specific technical problem] since I ran into the same wall on [your project]." Or: "Honestly, [specific thing about their approach] is what made me stop scrolling and actually write this."
-
-5. THE ASK: Always end with a CLEAR ask for a conversation. The reader must know you want to talk. But make it specific, not generic.
-   - "Would love to chat about how you're handling [specific challenge]. Open to a quick call this week?"
-   - "If any of this resonates, I'd welcome 15 minutes to dig into [specific topic]."
-   - "Happy to walk through how I approached [their problem]. Worth a quick call?"
-   - ALWAYS ask for the call/conversation. Do NOT end with just a question about their work. The goal is a meeting, not an intellectual discussion.
-   - Keep it one sentence. Confident, direct. Not needy.
+4. THE CLOSE (1-2 sentences): This is the most important part. Two things must happen:
+   a) A brief "why me" punch: one sentence that makes them think "this person ships real things." Not a brag. A fact. Something like "Three tools live in production right now, each solving a different hard problem." Or: "I ship complete systems solo, fast, and they stay up."
+   b) A CLEAR ask for a call. Not a question about their work. Not a vague "let me know." A direct ask for time:
+   - "Would love a quick call to dig into this. Open this week?"
+   - "Worth 15 minutes? Happy to walk through any of this live."
+   - "I'd welcome a call to talk about how I can help here."
+   NEVER end with just a technical question. NEVER end without asking for time. The reader must finish the email knowing exactly what you want: a call.
 
 ━━ SUBJECT LINES ━━
 About THEIR product or problem. Not about you. Not about what you built.
@@ -176,7 +175,7 @@ Return ONLY valid JSON:
   "lead_projects": ["<project name 1>", "<optional project name 2>"],
   "lead_reason": "<1 sentence: why these projects map to this challenge. If weak match, say so honestly>",
   "builder_angle": "<if match_quality is weak: 1 sentence about the builder story to lead with instead. e.g. 'Solo-shipped 3 production tools, each solving a different hard problem. Ownership mentality.'>",
-  "human_cta": "<1 sentence: ask for a conversation/call tied to their specific challenge. MUST ask for time, not just ask a question. e.g. 'Would love to chat about how you handle X. Open to a quick call?' Keep it confident and direct.>"
+  "human_cta": "<1-2 sentences: First a quick 'why me' punch (e.g. 'Three tools live in production right now'). Then ask for a call tied to their challenge. MUST ask for time. e.g. 'Worth a quick call this week?' Keep it confident and direct. The reader must finish knowing you want a call.>"
 }"""
 
 
@@ -255,7 +254,11 @@ This is NOT a cold outreach to a startup founder. This is a formal application e
 1. OPENER (1 sentence): State the role you're targeting and one line showing you know the company.
 2. QUALIFICATIONS (2-3 sentences): Degree, grad date, key skills matching the JD. Mention OPT/STEM OPT explicitly.
 3. PROOF (2-3 sentences): 1-2 most relevant projects with real metrics. Keep it tight.
-4. CLOSE (1 sentence): Express interest, mention resume is attached.
+4. CLOSE (1-2 sentences): Ask directly for an interview. Be clear and confident. Examples:
+   - "I'd love the opportunity to interview for this role. Resume is attached."
+   - "Would welcome the chance to interview. Resume attached for your review."
+   - "I'd appreciate the opportunity to discuss this role in an interview. Resume is attached."
+   ALWAYS ask for the interview explicitly. ALWAYS mention resume is attached.
 
 ━━ RULES ━━
 - ZERO em dashes. Use periods.
@@ -356,9 +359,11 @@ async def draft_email(
     if is_enterprise:
         word_limit = 100
         user_msg += f"\nDraft the email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject format: 'MS SWE May 2026 . [Role] . STEM OPT, no sponsorship needed' (under 70 chars). Body: {word_limit} words HARD MAX. First word MUST be about the company or role, not 'I'."
+        user_msg += "\n\nCRITICAL — THE LAST SENTENCE OF THE BODY MUST ask for an interview. Examples: 'I'd love the opportunity to interview for this role. Resume is attached.' or 'Would welcome the chance to interview. Resume attached.' DO NOT end the email without explicitly asking for an interview and mentioning resume attached."
     else:
         word_limit = 110
         user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. Do NOT mention more than one project unless both are directly relevant."
+        user_msg += "\n\nCRITICAL — THE LAST SENTENCE OF THE BODY MUST ask for a call or conversation. Examples: 'Worth a quick call this week?' or 'Would love 15 minutes to dig into this.' or 'Open to a quick call?' DO NOT end with just a technical question. DO NOT end without asking for time. The reader must finish the email knowing you want a call."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
