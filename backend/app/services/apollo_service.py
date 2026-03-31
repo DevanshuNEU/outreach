@@ -282,13 +282,24 @@ async def find_contacts(
             people = resp.json().get("people", [])
             print(f"[Apollo] search {search_filters} -> {len(people)} candidates")
 
+            flagged = []
+            unflagged = []
             for person in people:
                 pid = person.get("id")
                 if pid and pid not in seen_ids:
                     seen_ids.add(pid)
-                    # Only enrich people who have an email in Apollo's DB
                     if person.get("has_email"):
-                        candidate_ids.append(pid)
+                        flagged.append(pid)
+                    else:
+                        unflagged.append(pid)
+
+            candidate_ids.extend(flagged)
+
+            # has_email flag is unreliable for small companies.
+            # If nobody was flagged, try enriching top candidates anyway.
+            if not flagged and unflagged:
+                print(f"[Apollo] no has_email candidates in this search — falling back to top {min(5, len(unflagged))}")
+                candidate_ids.extend(unflagged[:5])
 
         print(f"[Apollo] {len(candidate_ids)} candidates have emails — checking limits before enriching")
 
