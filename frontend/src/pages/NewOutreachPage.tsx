@@ -53,6 +53,7 @@ export function NewOutreachPage() {
   const [location, setLocation] = useState("");
   const [domain, setDomain] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [jobUrl, setJobUrl] = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
   // Step 2: Template
@@ -110,9 +111,11 @@ export function NewOutreachPage() {
     const company = searchParams.get("company");
     const title = searchParams.get("jobTitle");
     const jd = searchParams.get("jd");
+    const url = searchParams.get("jobUrl");
     if (company) setCompanyName(company);
     if (title) setJobTitle(title);
     if (jd) setJobDescription(jd);
+    if (url) setJobUrl(url);
   }, [searchParams]);
 
   useEffect(() => {
@@ -140,6 +143,7 @@ export function NewOutreachPage() {
     const appRes = await api.post("/api/applications", {
       company_id: cId,
       job_title: jobTitle || undefined,
+      job_url: jobUrl || undefined,
       job_description: jobDescription || undefined,
     });
     const appId = appRes.data.id;
@@ -351,6 +355,18 @@ export function NewOutreachPage() {
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="Senior AI Engineer"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Job Posting URL</Label>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                  placeholder="https://boards.greenhouse.io/company/jobs/..."
+                  className="pl-10"
                 />
               </div>
             </div>

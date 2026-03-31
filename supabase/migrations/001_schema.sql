@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS applications (
   company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   role_template_id UUID REFERENCES role_templates(id),
   job_title TEXT,
+  job_url TEXT,
   job_description TEXT,
   email_subject TEXT,
   email_body TEXT,

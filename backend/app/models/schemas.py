@@ -108,12 +108,14 @@ class ApplicationCreate(BaseModel):
     company_id: str
     role_template_id: str | None = None
     job_title: str | None = None
+    job_url: str | None = None
     job_description: str | None = None
 
 
 class ApplicationUpdate(BaseModel):
     role_template_id: str | None = None
     job_title: str | None = None
+    job_url: str | None = None
     job_description: str | None = None
     email_subject: str | None = None
     email_body: str | None = None
@@ -135,6 +137,7 @@ class ApplicationOut(BaseModel):
     company_id: str
     role_template_id: str | None = None
     job_title: str | None = None
+    job_url: str | None = None
     job_description: str | None = None
     email_subject: str | None = None
     email_body: str | None = None
