@@ -55,7 +55,7 @@ SENIORITY_FILTERS = {
 }
 
 # Email statuses we accept, in priority order
-ACCEPTED_EMAIL_STATUSES = {"verified", "likely", "guessed"}
+ACCEPTED_EMAIL_STATUSES = {"verified", "likely", "guessed", "probabilistic"}
 
 
 def _get_daily_apollo_credits_used(db) -> int:
