@@ -391,6 +391,73 @@ async def find_contacts(
     return saved
 
 
+async def enrich_person(
+    first_name: str,
+    last_name: str,
+    domain: str | None = None,
+    organization_name: str | None = None,
+    user_id: str | None = None,
+) -> dict | None:
+    """
+    Given a person's name + company domain (from LinkedIn), hit Apollo's
+    people/match to get their verified email. Costs 1 credit.
+    Way more reliable than search for small companies.
+    """
+    body = {
+        "first_name": first_name,
+        "last_name": last_name,
+        "reveal_personal_emails": True,
+    }
+    if domain:
+        body["domain"] = domain
+    elif organization_name:
+        body["organization_name"] = organization_name
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{APOLLO_BASE}/api/v1/people/match",
+            headers=_apollo_headers(),
+            json=body,
+        )
+
+    if resp.status_code != 200:
+        print(f"[Apollo] enrich failed {resp.status_code}: {resp.text[:200]}")
+        return None
+
+    person = resp.json().get("person")
+    if not person:
+        print(f"[Apollo] enrich: no match for {first_name} {last_name}")
+        return None
+
+    email = person.get("email")
+    email_status = person.get("email_status", "")
+
+    if not email or email_status not in ACCEPTED_EMAIL_STATUSES:
+        print(f"[Apollo] enrich: {first_name} {last_name} has no usable email (status={email_status})")
+        return None
+
+    # Log usage
+    if user_id:
+        db = get_db()
+        db.table("api_usage").insert({
+            "user_id": user_id,
+            "service": "apollo",
+            "endpoint": "people_enrich",
+            "estimated_cost_cents": 1,
+        }).execute()
+
+    return {
+        "apollo_person_id": person.get("id"),
+        "first_name": person.get("first_name", first_name),
+        "last_name": person.get("last_name", last_name),
+        "title": person.get("title", ""),
+        "seniority": person.get("seniority", ""),
+        "email": email,
+        "email_status": email_status,
+        "linkedin_url": person.get("linkedin_url", ""),
+    }
+
+
 async def get_cached_contacts(company_id: str) -> list[dict]:
     db = get_db()
     result = (

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from app.database import get_db
 from app.auth.deps import get_current_user
-from app.services.apollo_service import search_company, find_contacts, get_cached_contacts
+from app.services.apollo_service import search_company, find_contacts, get_cached_contacts, enrich_person
 from app.models.schemas import ContactOut
 
 router = APIRouter(prefix="/api", tags=["contacts"])
@@ -15,6 +15,16 @@ class ManualContactCreate(BaseModel):
     last_name: str
     title: str | None = None
     email: str
+    linkedin_url: str | None = None
+
+
+class EnrichContactRequest(BaseModel):
+    company_id: str
+    first_name: str
+    last_name: str
+    domain: str | None = None
+    organization_name: str | None = None
+    title: str | None = None
     linkedin_url: str | None = None
 
 
@@ -97,6 +107,51 @@ def create_manual_contact(
     }
     result = db.table("contacts").insert(data).execute()
     return result.data[0]
+
+
+@router.post("/contacts/enrich", response_model=ContactOut)
+async def enrich_contact(
+    req: EnrichContactRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Find someone's verified email via Apollo enrichment.
+    User provides name + company domain (from LinkedIn).
+    Costs 1 Apollo credit. Way more reliable than search for small companies.
+    """
+    result = await enrich_person(
+        first_name=req.first_name,
+        last_name=req.last_name,
+        domain=req.domain,
+        organization_name=req.organization_name,
+        user_id=current_user["id"],
+    )
+    if not result:
+        raise HTTPException(404, "Could not find a verified email for this person. Try checking their LinkedIn or company website directly.")
+
+    # Save to DB
+    db = get_db()
+    data = {
+        "id": str(uuid.uuid4()),
+        "company_id": req.company_id,
+        "first_name": result["first_name"],
+        "last_name": result["last_name"],
+        "title": req.title or result.get("title", ""),
+        "email": result["email"],
+        "email_status": result["email_status"],
+        "linkedin_url": req.linkedin_url or result.get("linkedin_url", ""),
+        "seniority": result.get("seniority"),
+        "apollo_person_id": result.get("apollo_person_id"),
+    }
+
+    # Check for existing contact with same apollo_person_id
+    if result.get("apollo_person_id"):
+        existing = db.table("contacts").select("*").eq("apollo_person_id", result["apollo_person_id"]).execute()
+        if existing.data:
+            return existing.data[0]
+
+    saved = db.table("contacts").insert(data).execute()
+    return saved.data[0]
 
 
 @router.get("/contacts", response_model=list[ContactOut])

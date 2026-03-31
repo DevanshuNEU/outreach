@@ -77,6 +77,7 @@ export function NewOutreachPage() {
   const [manualEmail, setManualEmail] = useState("");
   const [manualLinkedin, setManualLinkedin] = useState("");
   const [addingManual, setAddingManual] = useState(false);
+  const [enriching, setEnriching] = useState(false);
 
   // Apollo credits
   const [apolloCredits, setApolloCredits] = useState<{
@@ -227,6 +228,30 @@ export function NewOutreachPage() {
       alert(err.response?.data?.detail || "Failed to add contact");
     } finally {
       setAddingManual(false);
+    }
+  };
+
+  const handleEnrichContact = async () => {
+    if (!manualFirst || !manualLast) return;
+    setEnriching(true);
+    try {
+      const res = await api.post("/api/contacts/enrich", {
+        company_id: companyId,
+        first_name: manualFirst,
+        last_name: manualLast,
+        domain: domain || undefined,
+        organization_name: !domain ? companyName : undefined,
+        title: manualTitle || undefined,
+        linkedin_url: manualLinkedin || undefined,
+      });
+      setContacts((prev) => [...prev, res.data]);
+      setManualFirst(""); setManualLast(""); setManualTitle("");
+      setManualEmail(""); setManualLinkedin("");
+      setShowManualForm(false);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "No verified email found. Try entering it manually.");
+    } finally {
+      setEnriching(false);
     }
   };
 
@@ -557,20 +582,34 @@ export function NewOutreachPage() {
                   <Label className="text-xs">LinkedIn URL (optional)</Label>
                   <Input value={manualLinkedin} onChange={(e) => setManualLinkedin(e.target.value)} placeholder="https://linkedin.com/in/janesmith" />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={handleEnrichContact}
+                    disabled={!manualFirst || !manualLast || enriching}
+                    className="gap-1"
+                    variant="default"
+                  >
+                    {enriching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                    Find Email (1 credit)
+                  </Button>
                   <Button
                     size="sm"
                     onClick={handleAddManualContact}
                     disabled={!manualFirst || !manualEmail || addingManual}
                     className="gap-1"
+                    variant="outline"
                   >
                     {addingManual ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                    Add Contact
+                    Add with Email
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setShowManualForm(false)}>
                     Cancel
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  "Find Email" uses Apollo to look up their verified work email (1 credit). "Add with Email" saves what you type directly.
+                </p>
               </div>
             )}
 
