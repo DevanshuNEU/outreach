@@ -53,7 +53,7 @@ Every single sentence must survive this test: if the reader thinks "so what?" af
 
 2. BRIDGE (1-2 sentences): Connect what you noticed to what you've built. Not "I have experience in X." More like: "I hit that exact wall" or "That's the constraint I ended up building around." This should feel like a natural conversation, not a pivot to your resume.
 
-3. PROOF (2-3 compact sentences or bullets): Decisions and outcomes. Not tasks, not features. What you chose, why, and what moved. Only include work that's DIRECTLY relevant to their specific challenge. One sharp result beats three generic ones.
+3. PROOF (2-3 compact sentences): ONE project. The single most relevant one. Go deep on the decision and outcome. Do NOT mention a second project unless it is genuinely, directly relevant to their specific challenge. If in doubt, leave it out. One deep story beats two shallow mentions every time.
 
 4. THE HUMAN MOMENT (1 sentence): Something only a real person would write. A genuine reason you're curious about THIS company's approach. Not "I'm excited about your mission." More like: "I've been thinking about [their specific technical problem] since I ran into the same wall on [your project]." Or: "Honestly, [specific thing about their approach] is what made me stop scrolling and actually write this."
 
@@ -76,13 +76,24 @@ GOOD: "your kafka migration and context windows" (specific to them, curiosity ga
 GOOD: "the tradeoff in your local-first sync" (shows you studied their work)
 
 ━━ LENGTH ━━
-STRICT 120 WORD MAXIMUM for the body. Count every word. If you hit 121, cut. Short emails get replies. Long emails get skimmed and forgotten.
+HARD MAXIMUM: 110 WORDS for the body. Not 111. Not 115. Not 120. ONE HUNDRED AND TEN.
+Count every word before outputting. If you're over, cut the weakest sentence. The weakest sentence is usually in the PROOF section — cut the project mention that's least relevant.
+DO NOT add a second project just to fill space. ONE relevant project with ONE sharp result is always better than two projects where one is shoehorned in.
+
+━━ ANTI-FILLER RULE ━━
+If you mention more than ONE project in the PROOF section, check: does the second project DIRECTLY connect to THIS company's specific challenge? If the connection requires more than one logical leap, CUT IT. One focused story beats two diluted ones.
 
 ━━ OUTPUT FORMAT ━━
 ONE EMAIL PER COMPANY. Same body for all contacts. Only the greeting name changes.
 Output ONLY: Subject: line, then body. No greeting. No links. No sign-off. Those are added separately by the frontend.
-NEVER invent metrics, performance numbers, or statistics. Only use numbers explicitly provided in the background or projects.
-No separator lines (--- or ___) before or after the body."""
+
+CRITICAL — NEVER INVENT:
+- NEVER invent metrics, performance numbers, percentages, or statistics
+- NEVER write a number that is not EXPLICITLY provided in the background or projects section below
+- If a project description says "87.5% Hit@1" you can use that number. If it doesn't mention a specific number, DO NOT make one up.
+- Violating this rule destroys credibility. One fake number invalidates the entire email.
+
+No em dashes anywhere. No separator lines (--- or ___) before or after the body."""
 
 
 LINKEDIN_NOTE_PROMPT = """You write a LinkedIn connection request note. 300 character HARD LIMIT. Count every character including spaces.
@@ -249,7 +260,7 @@ async def draft_email(
                 user_msg += f" ({metrics})"
             user_msg += "\n"
     user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
-    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. Subject: 60 chars MAX. Body: 120 words MAX. First word of the email MUST be about them, not 'I'."
+    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject: 60 chars MAX. Body: 110 words HARD MAX (count before output — if over 110, delete the weakest sentence). First word of the email MUST be about them, not 'I'. Do NOT mention more than one project unless both are directly relevant."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -271,7 +282,26 @@ async def draft_email(
     # Strip leading separator artifacts (--- or ___) Claude sometimes adds
     body = re.sub(r'^[-_]{3,}\s*\n+', '', body).strip()
 
-    # Hard-enforce 60-char subject limit — find clean cut point
+    # Kill em dashes
+    body = body.replace('—', '. ').replace('–', '. ')
+    body = re.sub(r'\.\s+\.', '.', body)
+    subject = subject.replace('—', ': ').replace('–', ': ')
+
+    # Hard-enforce 120-word body limit by trimming at sentence boundary
+    words = body.split()
+    if len(words) > 120:
+        # Find the last sentence-ending punctuation before word 120
+        truncated = ' '.join(words[:120])
+        # Find last sentence boundary (. or ?)
+        last_period = truncated.rfind('.')
+        last_question = truncated.rfind('?')
+        cut_point = max(last_period, last_question)
+        if cut_point > len(truncated) // 2:  # don't cut too aggressively
+            body = truncated[:cut_point + 1].strip()
+        else:
+            body = truncated.strip()
+
+    # Hard-enforce 60-char subject limit
     if len(subject) > 60:
         cut = subject[:60].rfind(" ")
         subject = subject[:cut] if cut > 40 else subject[:60]
