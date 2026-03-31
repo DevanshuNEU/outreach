@@ -427,14 +427,31 @@ async def enrich_person(
     person = resp.json().get("person")
     if not person:
         print(f"[Apollo] enrich: no match for {first_name} {last_name}")
+        # Fallback: guess email from domain
+        if domain:
+            return {
+                "apollo_person_id": None,
+                "first_name": first_name,
+                "last_name": last_name,
+                "title": "",
+                "seniority": "",
+                "email": f"{first_name.lower()}@{domain}",
+                "email_status": "guessed",
+                "linkedin_url": "",
+            }
         return None
 
     email = person.get("email")
     email_status = person.get("email_status", "")
 
     if not email or email_status not in ACCEPTED_EMAIL_STATUSES:
-        print(f"[Apollo] enrich: {first_name} {last_name} has no usable email (status={email_status})")
-        return None
+        print(f"[Apollo] enrich: {first_name} {last_name} has no usable email (status={email_status}), trying guess")
+        # Fallback: guess firstname@domain for startups (reliable for <500 person companies)
+        if domain:
+            email = f"{first_name.lower()}@{domain}"
+            email_status = "guessed"
+        else:
+            return None
 
     # Log usage
     if user_id:
