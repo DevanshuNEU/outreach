@@ -328,11 +328,13 @@ async def find_contacts(
     # e.g. searching Bobyard but getting @google.com emails → blocked.
     allowed_email_domains: set[str] = set()
     if company_domain:
-        allowed_email_domains.add(company_domain.lower().lstrip("www.").strip())
-    if company_name:
-        # Derive likely domain from name as a secondary check
-        derived = "".join(c for c in company_name.lower() if c.isalnum() or c == "-") + ".com"
-        allowed_email_domains.add(derived)
+        # Only use explicitly provided domain — derived domains cause false negatives
+        # e.g. user provides aircall.com but emails are @aircall.io
+        d = company_domain.lower().lstrip("www.").strip()
+        allowed_email_domains.add(d)
+        # Also accept the name-part match (aircall.io matches aircall.com and vice versa)
+        domain_name = d.rsplit(".", 1)[0]  # "aircall" from "aircall.io"
+        allowed_email_domains.add(domain_name)  # partial match fallback
 
     all_contacts = []
     for person in enriched:
@@ -356,7 +358,11 @@ async def find_contacts(
         # If we have domain info and the email domain doesn't match at all, reject.
         if allowed_email_domains:
             email_domain = email.split("@")[-1].lower() if "@" in email else ""
-            if email_domain and not any(email_domain.endswith(d) for d in allowed_email_domains):
+            # Match on full domain OR domain name (e.g. "aircall" matches aircall.io AND aircall.com)
+            if email_domain and not any(
+                email_domain.endswith(d) or email_domain.startswith(d + ".") or d in email_domain
+                for d in allowed_email_domains
+            ):
                 print(f"  SAFETY SKIP {name}: email {email!r} domain doesn't match company {allowed_email_domains}")
                 continue
 
