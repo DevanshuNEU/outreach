@@ -687,16 +687,16 @@ export function NewOutreachPage() {
               </div>
             )}
 
-            {contacts.length > 0 && (
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setStep("draft")}>
-                  <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                </Button>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep("draft")}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              {contacts.length > 0 && (
                 <Button onClick={handleAddAllToOutreach} className="gap-2">
                   <Check className="h-4 w-4" /> Save & Continue
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
