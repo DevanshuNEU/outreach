@@ -72,7 +72,9 @@ def _get_daily_apollo_credits_used(db) -> int:
 
 
 def _get_company_tier(employee_count: int | None) -> str:
-    if employee_count is None or employee_count <= 20:
+    if employee_count is None:
+        return "midsize"  # safe default — better to target EMs than CEOs for unknown-size companies
+    if employee_count <= 20:
         return "startup"
     elif employee_count <= 500:
         return "growth"
