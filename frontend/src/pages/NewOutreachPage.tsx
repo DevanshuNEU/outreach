@@ -656,6 +656,18 @@ export function NewOutreachPage() {
                         <span className="text-xs text-muted-foreground font-mono">
                           {c.email}
                         </span>
+                        {c.email_status === "verified" && (
+                          <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">✓ Verified</span>
+                        )}
+                        {c.email_status === "likely" && (
+                          <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">~ Likely</span>
+                        )}
+                        {c.email_status === "guessed" && (
+                          <span className="text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5">⚠ Guessed</span>
+                        )}
+                        {c.email_status === "manual" && (
+                          <span className="text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">Manual</span>
+                        )}
                         {c.linkedin_url && (
                           <a
                             href={c.linkedin_url}
@@ -713,6 +725,21 @@ export function NewOutreachPage() {
                       {c.first_name} {c.last_name}
                     </p>
                     <p className="text-sm text-muted-foreground">{c.title}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground font-mono">{c.email}</span>
+                      {c.email_status === "verified" && (
+                        <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">✓ Verified</span>
+                      )}
+                      {c.email_status === "likely" && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">~ Likely</span>
+                      )}
+                      {c.email_status === "guessed" && (
+                        <span className="text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5">⚠ Guessed — double-check before sending</span>
+                      )}
+                      {c.email_status === "manual" && (
+                        <span className="text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">Manual</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <CopyButton text={c.email} label="Email addr" />
