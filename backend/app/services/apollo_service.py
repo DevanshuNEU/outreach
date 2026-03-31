@@ -71,37 +71,109 @@ def _get_daily_apollo_credits_used(db) -> int:
     return sum(r.get("estimated_cost_cents", 0) or 0 for r in (result.data or []))
 
 
-def _get_company_tier(employee_count: int | None) -> str:
-    if employee_count is None:
-        return "midsize"  # safe default — better to target EMs than CEOs for unknown-size companies
-    if employee_count <= 20:
-        return "startup"
-    elif employee_count <= 500:
-        return "growth"
-    elif employee_count <= 5000:
-        return "midsize"
-    return "enterprise"
+def _get_company_tier(employee_count: int | None = None, revenue: float | None = None) -> str:
+    """Classify company tier. Apollo Basic often has employee_count=None, so revenue is the fallback."""
+    if employee_count is not None:
+        if employee_count <= 20:
+            return "startup"
+        elif employee_count <= 500:
+            return "growth"
+        elif employee_count <= 5000:
+            return "midsize"
+        return "enterprise"
+
+    if revenue is not None and revenue > 0:
+        if revenue < 5_000_000:
+            return "startup"
+        elif revenue < 100_000_000:
+            return "growth"
+        elif revenue < 1_000_000_000:
+            return "midsize"
+        return "enterprise"
+
+    return "growth"  # safe default when no data
 
 
 def _name_matches(query: str, candidate: str) -> bool:
     """
     Return True if the Apollo-returned company name is a reasonable match for what we searched.
     Guards against Apollo returning a totally unrelated company (e.g. searching 'Bobyard' and
-    getting back 'Google').
+    getting back 'Google') AND against subsidiary confusion (e.g. searching 'Qualcomm' and
+    getting 'QUALCOMM DATACENTER TECHNOLOGIES').
 
-    Rules (any one is enough to accept):
-      1. Query is a substring of candidate name (case-insensitive)
-      2. Candidate name is a substring of query
-      3. Any non-trivial word in the query (len >= 3) appears in the candidate name
+    Priority order:
+      1. Exact match (case-insensitive)
+      2. Query is a substring of candidate — BUT candidate must start with query
+         (prevents "Qualcomm" matching "QUALCOMM DATACENTER TECHNOLOGIES")
+      3. Candidate is a substring of query
+      4. ALL non-trivial query words appear in candidate (not just any one)
     """
     q = query.lower().strip()
     c = candidate.lower().strip()
-    if q in c or c in q:
+
+    # Strip common legal/domain suffixes for comparison
+    ignore_suffixes = [", inc.", ", inc", " inc.", " inc", ", llc", " llc", ", ltd.", ", ltd", " ltd.", " ltd", " corp", " corporation", ", co.", " co.", " co", ".ai", ".io", ".com"]
+    q_clean = q
+    c_clean = c
+    for s in ignore_suffixes:
+        if q_clean.endswith(s):
+            q_clean = q_clean[: -len(s)].strip()
+        if c_clean.endswith(s):
+            c_clean = c_clean[: -len(s)].strip()
+
+    # Exact match after cleaning
+    if q_clean == c_clean:
         return True
-    # Word overlap — ignore tiny words like "the", "of", "inc"
-    q_words = {w for w in q.split() if len(w) >= 3}
-    c_words = {w for w in c.split() if len(w) >= 3}
-    return bool(q_words & c_words)
+
+    # Query is prefix of candidate — BUT only if the rest is a known benign suffix
+    # "Qualcomm" matches "Qualcomm Incorporated" but NOT "Qualcomm Datacenter Technologies"
+    benign_suffixes = {"incorporated", "inc", "inc.", "llc", "ltd", "corp", "corporation",
+                       "technologies", "solutions", "group", "labs", "software", "systems"}
+    if c_clean.startswith(q_clean) and len(c_clean) > len(q_clean):
+        remainder = c_clean[len(q_clean):].strip().rstrip("., ")
+        remainder_words = set(remainder.split())
+        # Only accept if ALL remainder words are benign
+        if remainder_words and remainder_words.issubset(benign_suffixes):
+            return True
+
+    # Candidate is substring of query
+    if c_clean in q_clean:
+        return True
+
+    # ALL non-trivial query words must appear in candidate
+    # But only use this for multi-word queries (single-word queries are too loose with subset matching)
+    q_words = {w for w in q_clean.split() if len(w) >= 3}
+    c_words = {w for w in c_clean.split() if len(w) >= 3}
+    if len(q_words) >= 2 and q_words.issubset(c_words):
+        return True
+
+    return False
+
+
+def _clean_domain(raw: str | None) -> str | None:
+    """Clean a domain that might be a full URL like 'https://www.qualcomm.com/' into 'qualcomm.com'.
+    Returns None if the input is not a valid domain (e.g. 'San Francisco')."""
+    if not raw:
+        return None
+    d = raw.lower().strip().rstrip("/")
+    if "://" in d:
+        d = d.split("://", 1)[1]
+    if d.startswith("www."):
+        d = d[4:]
+    if "/" in d:
+        d = d.split("/")[0]
+    # Validate: must contain a dot and look like a domain (not "San Francisco" etc.)
+    if not d or "." not in d or " " in d:
+        return None
+    return d
+
+
+def _clean_company_name(name: str) -> str:
+    """Strip legal suffixes for better Apollo matching."""
+    for suffix in [" Technologies, Inc.", " Inc.", " LLC", " Ltd.", " Corp.", " Corporation", " Co."]:
+        if name.endswith(suffix):
+            return name[: -len(suffix)].strip()
+    return name
 
 
 async def search_company(company_name: str, domain: str | None = None) -> dict | None:
@@ -111,8 +183,11 @@ async def search_company(company_name: str, domain: str | None = None) -> dict |
         # If no domain, try to derive one (bobyard → bobyard.com) and try both.
         candidates_to_try: list[dict] = []
 
-        if domain:
-            candidates_to_try.append({"q_organization_domains": domain})
+        # Clean domain (might be a full URL like "https://www.qualcomm.com/")
+        clean_dom = _clean_domain(domain)
+
+        if clean_dom:
+            candidates_to_try.append({"q_organization_domains": clean_dom})
         else:
             # Derive a likely domain from company name: strip spaces/special chars
             derived_domain = company_name.lower().strip()
@@ -233,6 +308,8 @@ async def _enrich_people_bulk(client: httpx.AsyncClient, person_ids: list[str]) 
             continue
 
         matches = resp.json().get("matches", [])
+        # Filter out None/null entries Apollo sometimes returns on partial failures
+        matches = [m for m in matches if m]
         print(f"[Apollo] bulk_match batch {i//10 + 1}: {len(matches)} matches")
         enriched.extend(matches)
 
@@ -247,9 +324,11 @@ async def find_contacts(
     location: str | None = None,
     company_name: str | None = None,
     company_domain: str | None = None,
+    revenue: float | None = None,
 ) -> list[dict]:
     db = get_db()
-    tier = _get_company_tier(employee_count)
+    tier = _get_company_tier(employee_count=employee_count, revenue=revenue)
+    print(f"[Apollo] company tier: {tier} (employee_count={employee_count}, revenue={revenue})")
     config = SENIORITY_FILTERS[tier]
     seen_ids = set()
     candidate_ids = []  # Apollo person IDs to enrich
@@ -261,47 +340,62 @@ async def find_contacts(
 
     # Step 1: Search for people (FREE — no credits used)
     async with httpx.AsyncClient(timeout=30) as client:
-        for search_filters in config["searches"]:
-            body = {
-                "organization_ids": [organization_id],
-                "page": 1,
-                "per_page": config["per_page"],
-                **search_filters,
-            }
-            if person_locations:
-                body["person_locations"] = person_locations
 
-            resp = await client.post(
-                f"{APOLLO_BASE}/api/v1/mixed_people/api_search",
-                headers=_apollo_headers(),
-                json=body,
-            )
+        async def _run_searches(use_location: bool) -> list[str]:
+            """Run all configured searches. Returns list of candidate IDs."""
+            ids = []
+            local_seen = set(seen_ids)
+            for search_filters in config["searches"]:
+                body = {
+                    "organization_ids": [organization_id],
+                    "page": 1,
+                    "per_page": config["per_page"],
+                    **search_filters,
+                }
+                if use_location and person_locations:
+                    body["person_locations"] = person_locations
 
-            if resp.status_code != 200:
-                print(f"[Apollo] people search failed {resp.status_code}: {resp.text[:300]}")
-                continue
+                resp = await client.post(
+                    f"{APOLLO_BASE}/api/v1/mixed_people/api_search",
+                    headers=_apollo_headers(),
+                    json=body,
+                )
 
-            people = resp.json().get("people", [])
-            print(f"[Apollo] search {search_filters} -> {len(people)} candidates")
+                if resp.status_code != 200:
+                    print(f"[Apollo] people search failed {resp.status_code}: {resp.text[:300]}")
+                    continue
 
-            flagged = []
-            unflagged = []
-            for person in people:
-                pid = person.get("id")
-                if pid and pid not in seen_ids:
-                    seen_ids.add(pid)
-                    if person.get("has_email"):
-                        flagged.append(pid)
-                    else:
-                        unflagged.append(pid)
+                people = resp.json().get("people", [])
+                loc_tag = "(with location)" if use_location and person_locations else "(no location filter)"
+                print(f"[Apollo] search {search_filters} {loc_tag} -> {len(people)} candidates")
 
-            candidate_ids.extend(flagged)
+                flagged = []
+                unflagged = []
+                for person in people:
+                    pid = person.get("id")
+                    if pid and pid not in local_seen:
+                        local_seen.add(pid)
+                        if person.get("has_email"):
+                            flagged.append(pid)
+                        else:
+                            unflagged.append(pid)
 
-            # has_email flag is unreliable for small companies.
-            # If nobody was flagged, try enriching top candidates anyway.
-            if not flagged and unflagged:
-                print(f"[Apollo] no has_email candidates in this search — falling back to top {min(5, len(unflagged))}")
-                candidate_ids.extend(unflagged[:5])
+                ids.extend(flagged)
+
+                # has_email flag is unreliable for small companies.
+                # If nobody was flagged, try enriching top candidates anyway.
+                if not flagged and unflagged:
+                    print(f"[Apollo] no has_email candidates in this search — falling back to top {min(5, len(unflagged))}")
+                    ids.extend(unflagged[:5])
+            return ids
+
+        # First try with location filter
+        candidate_ids = await _run_searches(use_location=True)
+
+        # Fallback: if location filter returned 0 candidates, retry without it
+        if not candidate_ids and person_locations:
+            print(f"[Apollo] 0 candidates with location filter — retrying WITHOUT location")
+            candidate_ids = await _run_searches(use_location=False)
 
         print(f"[Apollo] {len(candidate_ids)} candidates have emails — checking limits before enriching")
 
@@ -330,13 +424,15 @@ async def find_contacts(
     # e.g. searching Bobyard but getting @google.com emails → blocked.
     allowed_email_domains: set[str] = set()
     if company_domain:
-        # Only use explicitly provided domain — derived domains cause false negatives
-        # e.g. user provides aircall.com but emails are @aircall.io
-        d = company_domain.lower().lstrip("www.").strip()
+        d = _clean_domain(company_domain)
+    else:
+        d = None
+    if d:
         allowed_email_domains.add(d)
         # Also accept the name-part match (aircall.io matches aircall.com and vice versa)
         domain_name = d.rsplit(".", 1)[0]  # "aircall" from "aircall.io"
         allowed_email_domains.add(domain_name)  # partial match fallback
+        print(f"[Apollo] email domain allowlist: {allowed_email_domains}")
 
     all_contacts = []
     for person in enriched:
@@ -365,6 +461,36 @@ async def find_contacts(
                 print(f"  SAFETY SKIP {name}: email {email!r} domain doesn't match company {allowed_email_domains}")
                 continue
 
+        # ── Layer 3c: title relevance filter ─────────────────────────────
+        # Reject clearly non-engineering titles (marketing, sales, legal, HR, etc.)
+        # These people can't help with SWE hiring and emailing them hurts credibility.
+        title_lower = (person.get("title") or "").lower()
+        irrelevant_keywords = {
+            "marketing", "sales", "account executive", "account manager",
+            "customer success", "business development", "event",
+            "content", "copywriter", "pr ", "public relations",
+            "legal", "counsel", "attorney", "lawyer",
+            "finance", "accounting", "accountant", "controller",
+            "hr ", "human resources", "people operations",
+            "office manager", "administrative", "executive assistant",
+        }
+        # Allow: recruiter, talent, engineering, software, cto, ceo, founder, director, vp eng, etc.
+        is_relevant = True
+        for kw in irrelevant_keywords:
+            if kw in title_lower:
+                is_relevant = False
+                break
+        # Override: always keep recruiters, talent, and founders even if title has a flagged word
+        keep_keywords = {"recruit", "talent", "founder", "ceo", "cto", "engineer", "software", "developer", "technical"}
+        if not is_relevant:
+            for kw in keep_keywords:
+                if kw in title_lower:
+                    is_relevant = True
+                    break
+        if not is_relevant:
+            print(f"  SKIP {name}: irrelevant title '{person.get('title')}'")
+            continue
+
         all_contacts.append({
             "apollo_person_id": person.get("id"),
             "first_name": person.get("first_name", ""),
@@ -382,19 +508,35 @@ async def find_contacts(
     # Upsert contacts into DB (shared across users)
     saved = []
     for c in all_contacts:
-        existing = (
-            db.table("contacts")
-            .select("*")
-            .eq("apollo_person_id", c["apollo_person_id"])
-            .execute()
-        )
-        if existing.data:
-            saved.append(existing.data[0])
-        else:
-            c["id"] = str(uuid.uuid4())
-            result = db.table("contacts").insert(c).execute()
-            if result.data:
-                saved.append(result.data[0])
+        # Only deduplicate if we have a real apollo_person_id (not None/guessed)
+        if c.get("apollo_person_id"):
+            existing = (
+                db.table("contacts")
+                .select("*")
+                .eq("apollo_person_id", c["apollo_person_id"])
+                .execute()
+            )
+            if existing.data:
+                saved.append(existing.data[0])
+                continue
+
+        # Also deduplicate by email + company_id (catches manual + guessed duplicates)
+        if c.get("email"):
+            existing_email = (
+                db.table("contacts")
+                .select("*")
+                .eq("email", c["email"])
+                .eq("company_id", c["company_id"])
+                .execute()
+            )
+            if existing_email.data:
+                saved.append(existing_email.data[0])
+                continue
+
+        c["id"] = str(uuid.uuid4())
+        result = db.table("contacts").insert(c).execute()
+        if result.data:
+            saved.append(result.data[0])
 
     # Log API usage
     db.table("api_usage").insert({

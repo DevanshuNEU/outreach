@@ -210,6 +210,71 @@ def _extract_jd_insights(
         return {}  # graceful fallback — email still drafts without it
 
 
+def _get_email_tier(employee_count: int | None = None, revenue: float | None = None) -> str:
+    """Determine email strategy tier based on company size or revenue.
+
+    Apollo Basic plan often returns employee_count=None, so we fall back to revenue:
+    - <$5M revenue → startup
+    - $5M-$100M → growth
+    - $100M-$1B → midsize
+    - >$1B → enterprise
+    """
+    if employee_count is not None:
+        if employee_count <= 50:
+            return "startup"
+        elif employee_count <= 500:
+            return "growth"
+        elif employee_count <= 5000:
+            return "midsize"
+        return "enterprise"
+
+    if revenue is not None and revenue > 0:
+        if revenue < 5_000_000:
+            return "startup"
+        elif revenue < 100_000_000:
+            return "growth"
+        elif revenue < 1_000_000_000:
+            return "midsize"
+        return "enterprise"
+
+    return "growth"  # safe default when we have no data
+
+
+ENTERPRISE_SYSTEM_PROMPT = """You write concise, professional emails from a new grad to a recruiter at a large company.
+
+This is NOT a cold outreach to a startup founder. This is a formal application email to a university/technical recruiter at a large enterprise. The reader processes hundreds of candidates. They need clarity, not cleverness.
+
+━━ WHAT RECRUITERS CARE ABOUT (in order) ━━
+1. Graduation date and degree
+2. Work authorization status (OPT/STEM OPT = no sponsorship needed = HUGE plus)
+3. Relevant technical skills matching the JD
+4. 1-2 concrete project highlights with metrics
+5. Availability
+
+━━ STRUCTURE ━━
+1. OPENER (1 sentence): State the role you're targeting and one line showing you know the company.
+2. QUALIFICATIONS (2-3 sentences): Degree, grad date, key skills matching the JD. Mention OPT/STEM OPT explicitly.
+3. PROOF (2-3 sentences): 1-2 most relevant projects with real metrics. Keep it tight.
+4. CLOSE (1 sentence): Express interest, mention resume is attached.
+
+━━ RULES ━━
+- ZERO em dashes. Use periods.
+- Contractions are fine: "I'm" not "I am"
+- Professional but not stiff. Confident but not cocky.
+- Do NOT try to be clever or create curiosity gaps. Be clear and direct.
+- NEVER invent metrics or numbers not in the provided background/projects.
+- First word should be about the company or role, not "I".
+- HARD MAX: 100 words for body.
+
+━━ SUBJECT LINE ━━
+Format: "[Degree] [Grad Date] — [Role] — STEM OPT, No Sponsorship"
+Example: "MS SWE May 2026 — Software Engineer — STEM OPT, no sponsorship needed"
+Keep under 70 chars.
+
+━━ OUTPUT FORMAT ━━
+Subject: line, then body. No greeting. No links. No sign-off. Those are added separately."""
+
+
 async def draft_email(
     user_id: str,
     job_description: str | None,
@@ -221,16 +286,25 @@ async def draft_email(
     sign_off_block: str,
     links_block: str,
     full_name: str = "",
+    employee_count: int | None = None,
+    revenue: float | None = None,
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    # Pre-step: deeply analyze JD + pick best-matching projects
+    tier = _get_email_tier(employee_count=employee_count, revenue=revenue)
+    is_enterprise = tier == "enterprise"
+    print(f"[Email] company={company_name}, employee_count={employee_count}, revenue={revenue}, tier={tier}, enterprise={is_enterprise}")
+
+    # Pre-step: deeply analyze JD + pick best-matching projects (skip for enterprise — recruiters don't care about curiosity gaps)
     project_names = [p.get("name", "") for p in (projects or []) if isinstance(p, dict) and p.get("name")]
     jd_insights = {}
-    if job_description:
+    if job_description and not is_enterprise:
         jd_insights = _extract_jd_insights(client, company_name, job_description, project_names)
 
-    system = BASE_SYSTEM_PROMPT + "\n\n" + role_prompt_addition
+    if is_enterprise:
+        system = ENTERPRISE_SYSTEM_PROMPT + "\n\n" + role_prompt_addition
+    else:
+        system = BASE_SYSTEM_PROMPT + "\n\n" + role_prompt_addition
 
     user_msg = f"Company: {company_name}\n"
     if company_info:
@@ -238,8 +312,8 @@ async def draft_email(
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
 
-    # Inject deep company intelligence — this is what makes the email feel researched
-    if jd_insights:
+    # For non-enterprise: inject deep company intelligence
+    if jd_insights and not is_enterprise:
         user_msg += "\n━━ COMPANY INTELLIGENCE (use this to make them feel SEEN) ━━\n"
         if jd_insights.get("their_world"):
             user_msg += f"What they're building and why it's hard: {jd_insights['their_world']}\n"
@@ -278,7 +352,13 @@ async def draft_email(
                 user_msg += f" ({metrics})"
             user_msg += "\n"
     user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
-    user_msg += "\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject: 60 chars MAX. Body: 110 words HARD MAX (count before output — if over 110, delete the weakest sentence). First word of the email MUST be about them, not 'I'. Do NOT mention more than one project unless both are directly relevant."
+
+    if is_enterprise:
+        word_limit = 100
+        user_msg += f"\nDraft the email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject format: 'MS SWE May 2026 . [Role] . STEM OPT, no sponsorship needed' (under 70 chars). Body: {word_limit} words HARD MAX. First word MUST be about the company or role, not 'I'."
+    else:
+        word_limit = 110
+        user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. Do NOT mention more than one project unless both are directly relevant."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -305,24 +385,24 @@ async def draft_email(
     body = re.sub(r'\.\s+\.', '.', body)
     subject = subject.replace('—', ': ').replace('–', ': ')
 
-    # Hard-enforce 120-word body limit by trimming at sentence boundary
+    # Hard-enforce word limit by trimming at sentence boundary
+    max_words = 100 if is_enterprise else 120
     words = body.split()
-    if len(words) > 120:
-        # Find the last sentence-ending punctuation before word 120
-        truncated = ' '.join(words[:120])
-        # Find last sentence boundary (. or ?)
+    if len(words) > max_words:
+        truncated = ' '.join(words[:max_words])
         last_period = truncated.rfind('.')
         last_question = truncated.rfind('?')
         cut_point = max(last_period, last_question)
-        if cut_point > len(truncated) // 2:  # don't cut too aggressively
+        if cut_point > len(truncated) // 2:
             body = truncated[:cut_point + 1].strip()
         else:
             body = truncated.strip()
 
-    # Hard-enforce 60-char subject limit
-    if len(subject) > 60:
-        cut = subject[:60].rfind(" ")
-        subject = subject[:cut] if cut > 40 else subject[:60]
+    # Hard-enforce subject char limit (70 for enterprise, 60 for others)
+    max_subject = 70 if is_enterprise else 60
+    if len(subject) > max_subject:
+        cut = subject[:max_subject].rfind(" ")
+        subject = subject[:cut] if cut > max_subject // 2 else subject[:max_subject]
 
     # Extract first name from full_name for LinkedIn note sign-off
     first_name = full_name.split()[0] if full_name.strip() else "Devanshu"

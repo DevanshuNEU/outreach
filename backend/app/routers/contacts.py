@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from app.database import get_db
 from app.auth.deps import get_current_user
-from app.services.apollo_service import search_company, find_contacts, get_cached_contacts, enrich_person
+from app.services.apollo_service import search_company, find_contacts, get_cached_contacts, enrich_person, _clean_company_name
 from app.models.schemas import ContactOut
 
 router = APIRouter(prefix="/api", tags=["contacts"])
@@ -59,7 +59,8 @@ async def find_application_contacts(
         return cached
 
     # Search Apollo for company org ID
-    org = await search_company(company["name"], company.get("domain"))
+    search_name = _clean_company_name(company["name"])
+    org = await search_company(search_name, company.get("domain"))
     if not org:
         raise HTTPException(404, "Company not found on Apollo. Check your Apollo plan at app.apollo.io → Settings → Billing, then regenerate your API key.")
 
@@ -67,12 +68,16 @@ async def find_application_contacts(
     emp_count = org.get("estimated_num_employees")
 
     # Update company with Apollo data
-    db.table("companies").update({
+    update_data = {
         "apollo_org_id": org_id,
         "employee_count": emp_count,
         "industry": org.get("industry"),
         "website": org.get("website_url"),
-    }).eq("id", company_id).execute()
+    }
+    revenue = org.get("organization_revenue")
+    if revenue is not None:
+        update_data["revenue"] = revenue
+    db.table("companies").update(update_data).eq("id", company_id).execute()
 
     # Find contacts (pass company info so Apollo filters by city/region and we can cross-check results)
     contacts = await find_contacts(
@@ -83,6 +88,7 @@ async def find_application_contacts(
         location=company.get("location"),
         company_name=company["name"],
         company_domain=company.get("domain"),
+        revenue=revenue,
     )
     return contacts
 

@@ -3,6 +3,7 @@ from app.database import get_db
 from app.auth.deps import get_current_user
 from app.models.schemas import DraftEmailRequest
 from app.services.email_service import draft_email
+from app.services.apollo_service import search_company, _clean_company_name
 
 router = APIRouter(prefix="/api/applications", tags=["emails"])
 
@@ -33,6 +34,30 @@ async def generate_draft(
         raise HTTPException(404, "Company not found")
     company = company.data[0]
 
+    # If we have no size data at all, do a quick Apollo lookup (needed for tier-aware emails)
+    apollo_revenue = None
+    if company.get("employee_count") is None and not company.get("revenue"):
+        search_name = _clean_company_name(company["name"])
+        print(f"[Email] no size data for '{company['name']}', searching Apollo as '{search_name}'")
+        org = await search_company(search_name, company.get("domain"))
+        if org:
+            update_data = {
+                "apollo_org_id": org.get("id"),
+                "industry": org.get("industry"),
+                "website": org.get("website_url"),
+            }
+            emp_count = org.get("estimated_num_employees")
+            apollo_revenue = org.get("organization_revenue")
+            if emp_count:
+                update_data["employee_count"] = emp_count
+                company["employee_count"] = emp_count
+            if apollo_revenue is not None:
+                update_data["revenue"] = apollo_revenue
+            print(f"[Email] Apollo: employee_count={emp_count}, revenue={apollo_revenue} for '{search_name}'")
+            db.table("companies").update(update_data).eq("id", company["id"]).execute()
+        else:
+            print(f"[Email] Apollo returned nothing for '{search_name}'")
+
     # Get role template
     template = db.table("role_templates").select("*").eq("id", req.role_template_id).execute()
     if not template.data:
@@ -56,6 +81,8 @@ async def generate_draft(
         sign_off_block=profile["sign_off_block"],
         links_block=profile["links_block"],
         full_name=profile.get("full_name", ""),
+        employee_count=company.get("employee_count"),
+        revenue=apollo_revenue or company.get("revenue"),
     )
 
     # Save draft to application

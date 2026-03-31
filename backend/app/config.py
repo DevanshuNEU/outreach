@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 72
     cors_origins: str = "http://localhost:5173"
-    apollo_max_contacts_per_search: int = 2
-    apollo_daily_credit_limit: int = 50
+    apollo_max_contacts_per_search: int = 5
+    apollo_daily_credit_limit: int = 80
 
     class Config:
         env_file = str(_ENV_FILE)
