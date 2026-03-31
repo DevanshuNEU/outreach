@@ -147,7 +147,7 @@ Read the job description carefully. Extract what is SPECIFIC to this company. No
 TASK 2 — FIND THE "SEEN" MOMENT:
 What specific observation about this company's approach, product, or technical challenge would make a reader think "this person actually studied what we do"? This is the most important output. It must be something that could NOT apply to any other company.
 
-TASK 3 — MATCH PROJECTS:
+TASK 3 — MATCH PROJECTS (HONESTY IS CRITICAL):
 Pick 1-2 projects from the candidate's list that map MOST directly to this JD's specific challenges.
 
 Matching rules:
@@ -157,6 +157,13 @@ Matching rules:
 - If the JD is about performance at scale, pick production optimization work
 - NEVER default to the biggest or most impressive project. Pick the most RELEVANT one.
 
+HONESTY CHECK — this is the most important rule:
+- If NO project is a genuine, direct match for this company's domain, set "match_quality" to "weak"
+- A Chrome extension is NOT a "data pipeline validation system"
+- A Terraform provisioning tool is NOT a "sandboxing system"
+- Do NOT reframe a project as something it's not just to force a connection
+- When match_quality is "weak", the email should lead with the BUILDER STORY (solo-shipped multiple production tools, ownership mentality, production performance experience) rather than forcing a single project to carry the email
+
 TASK 4 — CRAFT A HUMAN CTA:
 Based on the company's specific challenge, suggest a CTA that offers value or sparks curiosity. Not "15 minutes?" but something tied to their problem.
 
@@ -165,8 +172,10 @@ Return ONLY valid JSON:
   "their_world": "<1-2 sentences: what this company is specifically building and why it's technically hard>",
   "seen_moment": "<1 sentence: a specific observation about their approach/product/tech that would make them feel understood. Must be unfakeable — something only someone who actually studied this company would say>",
   "their_hard_problem": "<1 sentence: the core constraint or challenge this role exists to solve>",
+  "match_quality": "<'strong' if a project directly solves a similar problem, 'weak' if the connection requires reframing the project as something it's not>",
   "lead_projects": ["<project name 1>", "<optional project name 2>"],
-  "lead_reason": "<1 sentence: why these projects specifically map to THIS company's challenge>",
+  "lead_reason": "<1 sentence: why these projects map to this challenge. If weak match, say so honestly>",
+  "builder_angle": "<if match_quality is weak: 1 sentence about the builder story to lead with instead. e.g. 'Solo-shipped 3 production tools, each solving a different hard problem. Ownership mentality.'>",
   "human_cta": "<1 sentence: a specific, low-friction ask tied to their problem. Offers value or asks something genuinely curious. NOT '15 minutes?'>"
 }"""
 
@@ -238,8 +247,17 @@ async def draft_email(
             user_msg += f"THE KEY OBSERVATION (weave this into the hook — this is what makes them think 'this person gets us'): {jd_insights['seen_moment']}\n"
         if jd_insights.get("their_hard_problem"):
             user_msg += f"The core challenge this role solves: {jd_insights['their_hard_problem']}\n"
+        match_quality = jd_insights.get("match_quality", "strong")
         lead = jd_insights.get("lead_projects", [])
-        if lead:
+        if match_quality == "weak":
+            builder_angle = jd_insights.get("builder_angle", "Solo-shipped multiple production tools with full ownership.")
+            user_msg += f"\nMATCH QUALITY: WEAK. Do NOT force a project to fit. Instead:\n"
+            user_msg += f"BUILDER STORY INSTRUCTION: Lead the proof section with this angle: {builder_angle}\n"
+            user_msg += "Mention projects briefly as EVIDENCE of range and shipping ability, NOT as direct parallels to their problem.\n"
+            user_msg += "Do NOT reframe a project as something it's not. A Chrome extension is NOT a data pipeline. A Terraform tool is NOT a sandbox.\n"
+            if lead:
+                user_msg += f"Reference projects: {', '.join(lead)} (but describe them honestly, as what they actually are)\n"
+        elif lead:
             user_msg += f"\nPROJECT INSTRUCTION (hard rule): Build the email around: {', '.join(lead)}\n"
             if jd_insights.get("lead_reason"):
                 user_msg += f"Why: {jd_insights['lead_reason']}\n"
