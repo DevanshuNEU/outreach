@@ -37,6 +37,7 @@ interface Contact {
   title: string;
   seniority: string;
   email: string;
+  email_status: string;
   linkedin_url: string;
 }
 
