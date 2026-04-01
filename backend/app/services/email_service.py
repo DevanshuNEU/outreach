@@ -369,7 +369,8 @@ async def draft_email(
     else:
         word_limit = 150
         user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. NO BULLET POINTS — full prose paragraphs only. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. ONE project only — go deep, not wide."
-        user_msg += "\n\nTHE LAST LINE OF THE EMAIL MUST BE A QUESTION ASKING FOR A CALL OR TIME. Not a statement. A question. Examples: 'Worth a quick call this week?' or 'Would love 20 minutes if you're open to it.' or 'Open to a call?' If your last line is not a question asking for time, your output is WRONG. Cut any proof sentence to make room. The CTA question is the single most important line in the email."
+        user_msg += "\n\nEVERY SENTENCE MUST BE GRAMMATICALLY COMPLETE. No fragments. 'But product-minded engineering and the ability to...' is a fragment — it has no verb and makes no sense alone. Every sentence needs a subject and a verb. Read each sentence before outputting it."
+        user_msg += "\n\nTHE LAST LINE MUST BE A QUESTION ASKING FOR A CALL. Not a statement. Not a fragment. A complete question. Examples: 'Worth a quick call this week?' or 'Would love 20 minutes if you're open to it.' Cut any proof sentence to make room. Never skip this."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
