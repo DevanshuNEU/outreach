@@ -9,15 +9,17 @@ DEVANSHU_USER_ID = "193871f2-996c-49fa-9222-402bc3621cb0"
 
 # ── Profile ─────────────────────────────────────────────────────────────────
 
-BACKGROUND = """MS Software Engineering Systems, Northeastern University (GPA 3.85, May 2026).
+BACKGROUND = """MS Software Engineering Systems, Northeastern University (GPA 3.85, May 2026). BTech in ICT, DAIICT India (2022).
 
-I build tools that engineers actually use. Not demos. Three of them are live right now.
+2 years of industry experience as a full-stack/backend engineer at Jaksh Enterprise (Aug 2022 - Jul 2024), followed by MS and independent projects.
+
+Before grad school I spent 2 years as a full-stack/backend engineer at a production e-commerce company. I owned a RESTful API platform handling 15K+ daily requests and 12K+ monthly active users. I didn't add servers when latency spiked. I profiled first. Found three root causes: missing async event queues, no B-tree indexes on the hot PostgreSQL queries, no Redis caching layer. p95 dropped 65%, from 800ms to 280ms. Checkout completion up 18% during peak traffic. Auth middleware and rate limiting drove a 35% conversion lift. Built zero-downtime CI/CD with GitHub Actions and Docker. Compressed sprint releases from 2 weeks to 3 days, 99.5% deployment success rate.
 
 The OpenCodeIntel insight: chunking strategy moved retrieval accuracy more than any model swap. AST parsing across 8 languages vs. naive token splitting. Naive splitting destroys function boundaries, class relationships, import chains. Tree-sitter preserves all of it. That one architectural decision outperformed every embedding model upgrade combined. Built the eval framework first (Hit@1, Hit@3, MRR per layer) before touching any optimization. 87.5% Hit@1. 681 commits. MCP server integrates natively with Cursor and Windsurf.
 
 Saar: CLI tool that analyzes any codebase and auto-generates CLAUDE.md, .cursorrules, copilot-instructions. Detects naming conventions, auth patterns, custom exception hierarchies. Research-backed output length (~100 lines) because longer context files actually reduce AI task success rates. Used with Claude Code, Cursor, Copilot.
 
-LCO (Local Context Optimizer): Chrome extension that intercepts Claude's API stream in-browser. Real-time token counting using the same BPE tokenizer Claude uses. Per-message and session cost estimation for Opus, Sonnet, Haiku. Context window bar. Zero data leaves the machine. TypeScript. In production. Updated 3 days ago.
+LCO (Local Context Optimizer): Chrome extension that intercepts Claude's API stream in-browser. Real-time token counting using the same BPE tokenizer Claude uses. Per-message and session cost estimation for Opus, Sonnet, Haiku. Context window bar. Zero data leaves the machine. TypeScript. In production.
 
 devOS: my portfolio is a full macOS-style OS in the browser. Window management, file system, app launcher, Terminal with CLI commands (including `hire devanshu`), Arcade, Finder that browses my GitHub repos live. Not a flex. I analyzed that portfolios bounce in 8 seconds. An OS forces you to explore. It's a trap. It works. Next.js 15, Framer Motion, Zustand, Express backend.
 
@@ -49,6 +51,12 @@ PROJECTS = [
         "description": "Full macOS-style operating system in the browser. Window management, file system, app launcher — all from scratch. Includes: Terminal with real CLI commands (try: hire devanshu), Finder that browses GitHub repos live, Arcade with interactive games, Skill Tree visualizing technical expertise, Analytics with transparent visitor tracking, Changelog. Not a flex. I analyzed recruiter behavior: portfolios bounce in 8 seconds. An OS forces you to click around. It's a trap. It works. Next.js 15, TypeScript, Tailwind CSS, Framer Motion, Zustand. Express + Prisma + SQLite backend. Deployed on Vercel.",
         "metrics": "Full OS in browser, multiple interactive apps, live on devanshuchicholikar.com",
         "url": "https://devanshuchicholikar.com"
+    },
+    {
+        "name": "Production API Platform (2 years industry experience)",
+        "description": "Full-stack/backend engineer at a production e-commerce company for 2 years (Aug 2022 - Jul 2024). Owned a RESTful API platform serving 15K+ daily requests and 12K+ monthly users. When p95 latency spiked, I profiled before touching anything. Found three root causes: missing async event queues, unindexed hot PostgreSQL queries, no Redis caching. Fixed all three. p95 dropped 65% (800ms to 280ms). Checkout completion up 18% during peak traffic. Built auth middleware and rate limiting that drove 35% conversion lift. Replaced a 2-week sprint cycle with zero-downtime CI/CD via GitHub Actions and Docker — releases went from 2 weeks to 3 days, 99.5% deployment success rate. Node.js, Express, PostgreSQL, Redis, Docker, GitHub Actions.",
+        "metrics": "p95 800ms to 280ms (-65%), checkout +18%, conversion +35%, releases 2 weeks to 3 days, 99.5% deploy success, 15K+ daily requests",
+        "url": None
     },
     {
         "name": "SecureScale",
