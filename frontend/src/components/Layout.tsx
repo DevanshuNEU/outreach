@@ -9,11 +9,13 @@ import {
   LogOut,
   Zap,
   TrendingUp,
+  Briefcase,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/fit", label: "Fit Check", icon: Zap },
+  { path: "/jobs", label: "Jobs", icon: Briefcase },
   { path: "/outreach/new", label: "New Outreach", icon: PlusCircle },
   { path: "/tracker", label: "Tracker", icon: List },
   { path: "/analytics", label: "Analytics", icon: TrendingUp },

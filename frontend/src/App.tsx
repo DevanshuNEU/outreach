@@ -12,6 +12,7 @@ import { TemplatesPage } from "@/pages/TemplatesPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { FitAnalyzerPage } from "@/pages/FitAnalyzerPage";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
+import { JobFinderPage } from "@/pages/JobFinderPage";
 
 export default function App() {
   const { user, profile, loading, login, register, logout, refreshProfile } =
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/fit" element={<FitAnalyzerPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/jobs" element={<JobFinderPage />} />
           <Route path="/login" element={<Navigate to="/" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

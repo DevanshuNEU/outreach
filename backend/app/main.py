@@ -13,6 +13,7 @@ from app.routers.outreach import router as outreach_router
 from app.routers.stats import router as stats_router
 from app.routers.fit_analyzer import router as fit_router
 from app.routers.analytics import router as analytics_router
+from app.routers.jobs import router as jobs_router
 
 app = FastAPI(title="Cold Outreach API")
 
@@ -40,6 +41,7 @@ app.include_router(outreach_router)
 app.include_router(stats_router)
 app.include_router(fit_router)
 app.include_router(analytics_router)
+app.include_router(jobs_router)
 
 
 @app.get("/api/health")

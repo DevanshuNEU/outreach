@@ -115,6 +115,18 @@ CREATE TABLE IF NOT EXISTS api_usage (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Target Companies (ATS Job Watcher)
+CREATE TABLE IF NOT EXISTS target_companies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  company_name TEXT NOT NULL,
+  ats_type TEXT NOT NULL CHECK (ats_type IN ('greenhouse', 'lever', 'ashby')),
+  ats_slug TEXT NOT NULL,
+  keywords TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_target_companies_user ON target_companies(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_usage_user_date ON api_usage(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_outreach_user ON outreach(user_id, created_at DESC);
