@@ -11,7 +11,9 @@ DEVANSHU_USER_ID = "193871f2-996c-49fa-9222-402bc3621cb0"
 
 BACKGROUND = """MS Software Engineering Systems, Northeastern University (GPA 3.85, May 2026). BTech in ICT, DAIICT India (2022).
 
-2 years of industry experience as a full-stack/backend engineer at Jaksh Enterprise (Aug 2022 - Jul 2024), followed by MS and independent projects.
+1,821 GitHub contributions in the last year. ~5 commits a day, every day, across 28+ repositories. Not a streak for the sake of it. That's just how I work.
+
+2 years of industry experience as a full-stack/backend engineer before grad school, followed by MS and independent projects.
 
 Before grad school I spent 2 years as a full-stack/backend engineer at a production e-commerce company. I owned a RESTful API platform handling 15K+ daily requests and 12K+ monthly active users. I didn't add servers when latency spiked. I profiled first. Found three root causes: missing async event queues, no B-tree indexes on the hot PostgreSQL queries, no Redis caching layer. p95 dropped 65%, from 800ms to 280ms. Checkout completion up 18% during peak traffic. Auth middleware and rate limiting drove a 35% conversion lift. Built zero-downtime CI/CD with GitHub Actions and Docker. Compressed sprint releases from 2 weeks to 3 days, 99.5% deployment success rate.
 
@@ -76,11 +78,11 @@ SIGN_OFF = """Best,
 Devanshu Chicholikar
 MS Software Engineering, Northeastern, May 2026
 3 years work authorization (STEM OPT). No H1B needed.
-devanshuchicholikar.me | github.com/OpenCodeIntel"""
+devanshuchicholikar.com | github.com/DevanshuNEU"""
 
-LINKS_BLOCK = """opencodeintel.com
-github.com/OpenCodeIntel/opencodeintel
-devanshuchicholikar.me"""
+LINKS_BLOCK = """github.com/DevanshuNEU
+opencodeintel.com
+devanshuchicholikar.com"""
 
 # ── Templates ────────────────────────────────────────────────────────────────
 
