@@ -391,10 +391,11 @@ async def draft_email(
     # Strip leading separator artifacts (--- or ___) Claude sometimes adds
     body = re.sub(r'^[-_]{3,}\s*\n+', '', body).strip()
 
-    # Kill em dashes
-    body = body.replace('—', '. ').replace('–', '. ')
-    body = re.sub(r'\.\s+\.', '.', body)
-    subject = subject.replace('—', ': ').replace('–', ': ')
+    # Kill em dashes — replace with period and capitalize the next word
+    body = re.sub(r'\s*[—–]\s*([a-zA-Z])', lambda m: '. ' + m.group(1).upper(), body)
+    body = re.sub(r'\s*[—–]\s*', '. ', body)  # catch any remaining
+    body = re.sub(r'\.\s+\.', '.', body)       # clean up double periods
+    subject = re.sub(r'\s*[—–]\s*', ': ', subject)
 
     # Hard-enforce word limit by trimming at sentence boundary
     max_words = 100 if is_enterprise else 160
