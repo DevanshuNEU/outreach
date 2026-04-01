@@ -62,8 +62,23 @@ The reader must finish the email knowing exactly what you want: a conversation.
 Every sentence must survive: if the reader thinks "so what?" after reading it, cut it or rewrite it. "I'm a software engineer" fails. "I brought p95 from 800ms to 280ms before anyone suggested adding servers" passes.
 
 ━━ SUBJECT LINES ━━
-About THEIR product or problem. Not about you.
-Create a curiosity gap: the reader should think "what does this person know?" before opening.
+The subject line has ONE job: make them open the email. It creates a curiosity gap.
+
+ANTI-PATTERNS (these get deleted, not read):
+- Never restate their own JD language back at them ("seamlessly woven into customer workflows" — that's their words, not a hook)
+- Never use the company name — they know who they are
+- Never describe what you're doing ("following up", "interested in role", "quick note")
+- Never be vague ("a quick question", "something interesting")
+
+PATTERNS THAT WORK:
+- A specific pain point as a statement: "voice agents failing to respond in 100ms"
+- A tension or gap: "the gap between demo and production deployment"
+- A counter-intuitive insight: "it wasn't the model. it was the chunking"
+- Something that only applies to THIS company: "your kafka consumer lag at 50k TPS"
+- A problem they publicly have: "what breaks first when robots leave the lab"
+
+TEST: Read the subject line and ask "would someone who works there think this person knows something I don't?" If yes, use it. If it could apply to any company, rewrite it.
+
 3-7 words. Lowercase is fine. Specific beats clever.
 HARD LIMIT: 60 characters including spaces.
 
@@ -94,6 +109,105 @@ RULES:
 - NEVER invent a person's name. Only use names explicitly provided.
 
 Output ONLY the note text. No label. No quotes. Just the note."""
+
+
+EMAIL_VALIDATION_PROMPT = """You are a brutally honest cold email reviewer. Your job is to find problems, not validate choices. Be hard on the email. If something is weak, say it clearly.
+
+Review the email and return ONLY valid JSON:
+{
+  "score": <integer 1-10>,
+  "subject_verdict": "<'strong' or 'weak'>",
+  "subject_reason": "<one sentence: why strong or weak>",
+  "proof_verdict": "<'strong' or 'weak'>",
+  "proof_reason": "<one sentence: does the proof point actually match what this role needs?>",
+  "has_cta": <true or false>,
+  "has_fragments": <true or false>,
+  "has_em_dashes": <true or false>,
+  "has_bullets": <true or false>,
+  "word_count": <integer>,
+  "issues": ["<specific problem 1>", "<specific problem 2>"],
+  "strengths": ["<what actually works 1>"]
+}
+
+SCORING:
+9-10: Reads like a real human wrote it. Specific quote or hook from their world. Honest gap acknowledgment. Proof matches role perfectly. Ends with a question. No fragments.
+7-8: Good but one clear weakness (subject is generic OR proof doesn't perfectly match role OR slightly over word limit).
+5-6: Decent bones but feels templated. Wrong proof point, or subject just restates their JD, or missing gap acknowledgment.
+3-4: Multiple problems. Generic, wrong proof, no hook, reads like a mass blast.
+1-2: Spam. Could be sent to any company. No specificity, no honesty.
+
+SUBJECT VERDICT — weak if:
+- It uses the company's own JD language back at them
+- It could apply to any company in the industry
+- It describes what you're doing ("following up", "interested in role")
+- It's a statement with no hook (just a product feature name)
+
+Strong if:
+- It would make someone at this company think "how does this person know that?"
+- It references a specific pain point, tension, or insight about THIS company
+
+PROOF VERDICT — weak if:
+- The proof story doesn't map to the core challenge of this specific role
+- For a customer-facing/FDE role: backend API story is weak (devOS/user-behavior story is strong)
+- For a backend/infra role: portfolio OS story is weak (API latency story is strong)
+- For an AI/ML role: infrastructure story is weak (retrieval/chunking story is strong)
+
+ISSUES — be specific. Not "the email could be better." Say exactly what is wrong:
+- "Subject line 'seamlessly woven into customer workflows' is just their JD language restated — creates zero curiosity"
+- "Proof point is a backend API story but this is a Forward-Deployed Engineer role — devOS user-behavior story would match better"
+- "Last sentence 'But product-minded engineering...' is a fragment — has no verb"
+- "Word count is 162, over the 150 limit"
+
+Return ONLY the JSON. No explanation outside it."""
+
+
+def _validate_email(
+    client: anthropic.Anthropic,
+    subject: str,
+    body: str,
+    job_description: str,
+    template_slug: str,
+) -> dict:
+    """Self-validate the generated email. Returns score + issues so user knows what's weak."""
+    try:
+        msg = f"""Template type: {template_slug}
+Subject: {subject}
+Body:
+{body}
+
+Job Description (first 1500 chars):
+{job_description[:1500] if job_description else "Not provided"}"""
+
+        r = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            system=EMAIL_VALIDATION_PROMPT,
+            messages=[{"role": "user", "content": msg}],
+        )
+        raw = r.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        result = json.loads(raw.strip())
+        print(f"[Validation] score={result.get('score')}/10 issues={result.get('issues')}")
+        return result
+    except Exception as e:
+        print(f"[Validation] failed: {e}")
+        return {"score": None, "issues": [], "strengths": []}
+
+
+# Role type → best proof point hint
+ROLE_PROOF_HINTS = {
+    "fde": "For a Forward-Deployed Engineer role, the BEST proof point is the devOS portfolio (user behavior analysis → engineered outcome → 4+ min sessions). This proves customer/user obsession better than any backend story. Use it if available.",
+    "fullstack": "For full-stack roles, lead with devOS (shows product thinking + full ownership) then connect to OpenCodeIntel scale.",
+    "ai-ml": "For AI/ML roles, OpenCodeIntel AST chunking insight is the primary story. Everything else is secondary.",
+    "rag": "For RAG/retrieval roles, OpenCodeIntel retrieval pipeline is the ONLY story. Go deep on the eval framework and chunking insight.",
+    "context": "For context engineering roles, OpenCodeIntel is the primary story. The insight: chunking > model choice.",
+    "backend": "For backend roles, the production API platform story (p95 800ms→280ms, profiling first) is strongest. SecureScale is secondary.",
+    "cloud": "For cloud/devops/SRE roles, SecureScale (multi-AZ Terraform, CloudWatch, provisioning 2hrs→10min) is primary. TA curriculum is secondary.",
+    "swe": "For general SWE roles, match the proof point to the company's primary challenge. Default to OpenCodeIntel if uncertain.",
+}
 
 
 async def generate_linkedin_note(
@@ -286,6 +400,7 @@ async def draft_email(
     full_name: str = "",
     employee_count: int | None = None,
     revenue: float | None = None,
+    template_slug: str = "swe",
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
@@ -309,6 +424,10 @@ async def draft_email(
         user_msg += f"Company info: {company_info}\n"
     if job_description:
         user_msg += f"\nJob Description:\n{job_description}\n"
+
+    # Inject role-type proof point hint
+    if not is_enterprise and template_slug in ROLE_PROOF_HINTS:
+        user_msg += f"\n━━ ROLE TYPE PROOF HINT ━━\n{ROLE_PROOF_HINTS[template_slug]}\n"
 
     # For non-enterprise: inject deep company intelligence
     if jd_insights and not is_enterprise:
@@ -459,4 +578,24 @@ async def draft_email(
         "estimated_cost_cents": round(cost_cents, 4),
     }).execute()
 
-    return {"subject": subject, "body": body, "linkedin_note": linkedin_note}
+    # Self-validate — AI critiques its own output so user knows what's weak
+    validation = {}
+    if not is_enterprise and job_description:
+        validation = _validate_email(client, subject, body, job_description, template_slug)
+
+    return {
+        "subject": subject,
+        "body": body,
+        "linkedin_note": linkedin_note,
+        "quality": {
+            "score": validation.get("score"),
+            "issues": validation.get("issues", []),
+            "strengths": validation.get("strengths", []),
+            "subject_verdict": validation.get("subject_verdict"),
+            "subject_reason": validation.get("subject_reason"),
+            "proof_verdict": validation.get("proof_verdict"),
+            "proof_reason": validation.get("proof_reason"),
+            "has_cta": validation.get("has_cta", True),
+            "has_fragments": validation.get("has_fragments", False),
+        }
+    }

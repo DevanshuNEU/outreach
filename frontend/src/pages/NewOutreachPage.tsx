@@ -67,6 +67,17 @@ export function NewOutreachPage() {
   const [linkedinNote, setLinkedinNote] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [wordCount, setWordCount] = useState(0);
+  const [emailQuality, setEmailQuality] = useState<{
+    score: number | null;
+    issues: string[];
+    strengths: string[];
+    subject_verdict: string;
+    subject_reason: string;
+    proof_verdict: string;
+    proof_reason: string;
+    has_cta: boolean;
+    has_fragments: boolean;
+  } | null>(null);
 
   // Step 4: Contacts
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -177,6 +188,7 @@ export function NewOutreachPage() {
       setEmailSubject(res.data.subject);
       setEmailBody(res.data.body);
       setLinkedinNote(res.data.linkedin_note || "");
+      setEmailQuality(res.data.quality || null);
       setStep("draft");
     } catch (err: any) {
       alert(err.response?.data?.detail || "Draft failed");
@@ -461,9 +473,20 @@ export function NewOutreachPage() {
             <CardTitle className="flex items-center justify-between">
               <span>Email Draft</span>
               <div className="flex items-center gap-2">
-                <Badge variant={wordCount > 130 ? "destructive" : "secondary"}>
+                <Badge variant={wordCount > 150 ? "destructive" : "secondary"}>
                   {wordCount} words
                 </Badge>
+                {emailQuality?.score != null && (
+                  <Badge variant={
+                    emailQuality.score >= 8 ? "default" :
+                    emailQuality.score >= 6 ? "secondary" : "destructive"
+                  } className={
+                    emailQuality.score >= 8 ? "bg-green-600 text-white" :
+                    emailQuality.score >= 6 ? "bg-yellow-500 text-white" : ""
+                  }>
+                    {emailQuality.score}/10
+                  </Badge>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -493,6 +516,48 @@ export function NewOutreachPage() {
                 className="font-mono text-sm"
               />
             </div>
+            {/* Quality Report */}
+            {emailQuality && (emailQuality.issues?.length > 0 || emailQuality.strengths?.length > 0) && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    AI Self-Review
+                  </Label>
+                  {emailQuality.issues?.length > 0 && (
+                    <div className="space-y-1">
+                      {emailQuality.issues.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded px-3 py-1.5">
+                          <span className="mt-0.5 shrink-0">⚠</span>
+                          <span>{issue}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {emailQuality.strengths?.length > 0 && (
+                    <div className="space-y-1">
+                      {emailQuality.strengths.map((s, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded px-3 py-1.5">
+                          <span className="mt-0.5 shrink-0">✓</span>
+                          <span>{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {emailQuality.subject_reason && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium">Subject:</span> {emailQuality.subject_verdict === "weak" ? "⚠ " : "✓ "}{emailQuality.subject_reason}
+                    </p>
+                  )}
+                  {emailQuality.proof_reason && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium">Proof point:</span> {emailQuality.proof_verdict === "weak" ? "⚠ " : "✓ "}{emailQuality.proof_reason}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
             {linkedinNote && (
               <>
                 <Separator />

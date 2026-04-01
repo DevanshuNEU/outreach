@@ -83,6 +83,7 @@ async def generate_draft(
         full_name=profile.get("full_name", ""),
         employee_count=company.get("employee_count"),
         revenue=apollo_revenue or company.get("revenue"),
+        template_slug=template.get("slug", "swe"),
     )
 
     # Save draft to application
