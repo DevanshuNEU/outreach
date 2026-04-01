@@ -273,7 +273,7 @@ function ATSWatcher() {
   const [targets, setTargets] = useState<TargetCompany[]>([]);
   const [atsJobs, setAtsJobs] = useState<ATSJob[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [loadingTargets, setLoadingTargets] = useState(true);
+  const [, setLoadingTargets] = useState(true);
   const [error, setError] = useState("");
 
   // Form state
@@ -485,7 +485,7 @@ function ATSWatcher() {
                       size="sm"
                       onClick={() =>
                         navigate(
-                          `/outreach/new?company=${encodeURIComponent(job.company)}&jobTitle=${encodeURIComponent(job.title)}`
+                          `/outreach/new?company=${encodeURIComponent(job.company_name)}&jobTitle=${encodeURIComponent(job.title)}`
                         )
                       }
                       className="gap-1.5"
