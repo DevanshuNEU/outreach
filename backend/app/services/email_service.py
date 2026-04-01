@@ -369,7 +369,7 @@ async def draft_email(
     else:
         word_limit = 150
         user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. NO BULLET POINTS — full prose paragraphs only. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. ONE project only — go deep, not wide."
-        user_msg += "\n\nCRITICAL — THE LAST SENTENCE MUST ask for a call or time. Budget: open with their world (2-3 sentences referencing something specific from their JD) + honest bridge to your work (1-2 sentences) + one proof story (2-3 sentences) + CTA (1-2 sentences). The CTA is NON-NEGOTIABLE. If running out of words, cut a proof sentence — never cut the CTA. Examples: 'Worth a quick call this week?' or 'Would love 20 minutes if you're open to it.' DO NOT end without asking for time."
+        user_msg += "\n\nTHE LAST LINE OF THE EMAIL MUST BE A QUESTION ASKING FOR A CALL OR TIME. Not a statement. A question. Examples: 'Worth a quick call this week?' or 'Would love 20 minutes if you're open to it.' or 'Open to a call?' If your last line is not a question asking for time, your output is WRONG. Cut any proof sentence to make room. The CTA question is the single most important line in the email."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -410,9 +410,11 @@ async def draft_email(
             body = truncated.strip()
 
     # CTA safety net — if the email doesn't end with an ask, append one
-    cta_signals = ["call", "chat", "talk", "minutes", "interview", "resume attached", "meet", "connect", "conversation", "open to", "worth a"]
-    last_sentence = body.rsplit(".", 1)[-1].lower() + body.rsplit("?", 1)[-1].lower()
-    has_cta = any(sig in last_sentence for sig in cta_signals)
+    cta_signals = ["call", "chat", "talk", "minutes", "interview", "resume attached", "meet", "connect", "conversation", "open to", "worth a", "quick chat", "15 min", "20 min", "this week", "your time"]
+    # Check last TWO sentences to catch things like "That's why I'm drawn to your team."
+    last_part = body.rsplit(".", 2)[-2:]
+    last_part_text = " ".join(last_part).lower() + body.rsplit("?", 1)[-1].lower()
+    has_cta = any(sig in last_part_text for sig in cta_signals)
     if not has_cta:
         if is_enterprise:
             body = body.rstrip(".") + ". I'd welcome the chance to interview for this role. Resume is attached."
