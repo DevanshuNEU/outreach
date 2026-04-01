@@ -75,7 +75,7 @@ GOOD: "your kafka migration and context windows" (specific to them, curiosity ga
 GOOD: "the tradeoff in your local-first sync" (shows you studied their work)
 
 ━━ LENGTH ━━
-HARD MAXIMUM: 110 WORDS for the body. Not 111. Not 115. Not 120. ONE HUNDRED AND TEN.
+HARD MAXIMUM: 130 WORDS for the body. Not 131. Not 135. Not 140. ONE HUNDRED AND THIRTY.
 Count every word before outputting. If you're over, cut the weakest sentence. The weakest sentence is usually in the PROOF section — cut the project mention that's least relevant.
 DO NOT add a second project just to fill space. ONE relevant project with ONE sharp result is always better than two projects where one is shoehorned in.
 
@@ -361,9 +361,9 @@ async def draft_email(
         user_msg += f"\nDraft the email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject format: 'MS SWE May 2026 . [Role] . STEM OPT, no sponsorship needed' (under 70 chars). Body: {word_limit} words HARD MAX. First word MUST be about the company or role, not 'I'."
         user_msg += "\n\nCRITICAL — THE LAST SENTENCE OF THE BODY MUST ask for an interview. Examples: 'I'd love the opportunity to interview for this role. Resume is attached.' or 'Would welcome the chance to interview. Resume attached.' DO NOT end the email without explicitly asking for an interview and mentioning resume attached."
     else:
-        word_limit = 110
+        word_limit = 130
         user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. Do NOT mention more than one project unless both are directly relevant."
-        user_msg += "\n\nCRITICAL — THE LAST SENTENCE OF THE BODY MUST ask for a call or conversation. Examples: 'Worth a quick call this week?' or 'Would love 15 minutes to dig into this.' or 'Open to a quick call?' DO NOT end with just a technical question. DO NOT end without asking for time. The reader must finish the email knowing you want a call."
+        user_msg += "\n\nCRITICAL — THE LAST SENTENCE OF THE BODY MUST ask for a call or conversation. Budget your words: hook (2 sentences) + bridge (1-2) + proof (2-3) + CTA (1). The CTA is NON-NEGOTIABLE. If you are running out of words, CUT a proof sentence to make room for the CTA. Examples: 'Worth a quick call this week?' or 'Would love 15 minutes to dig into this.' or 'Open to a quick call?' DO NOT end with just a statement. DO NOT end without asking for time."
 
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -391,7 +391,7 @@ async def draft_email(
     subject = subject.replace('—', ': ').replace('–', ': ')
 
     # Hard-enforce word limit by trimming at sentence boundary
-    max_words = 100 if is_enterprise else 120
+    max_words = 100 if is_enterprise else 140
     words = body.split()
     if len(words) > max_words:
         truncated = ' '.join(words[:max_words])
@@ -402,6 +402,17 @@ async def draft_email(
             body = truncated[:cut_point + 1].strip()
         else:
             body = truncated.strip()
+
+    # CTA safety net — if the email doesn't end with an ask, append one
+    cta_signals = ["call", "chat", "talk", "minutes", "interview", "resume attached", "meet", "connect", "conversation", "open to", "worth a"]
+    last_sentence = body.rsplit(".", 1)[-1].lower() + body.rsplit("?", 1)[-1].lower()
+    has_cta = any(sig in last_sentence for sig in cta_signals)
+    if not has_cta:
+        if is_enterprise:
+            body = body.rstrip(".") + ". I'd welcome the chance to interview for this role. Resume is attached."
+        else:
+            body = body.rstrip(".") + ". Worth a quick call this week?"
+        print(f"[Email] CTA was missing — appended fallback CTA")
 
     # Hard-enforce subject char limit (70 for enterprise, 60 for others)
     max_subject = 70 if is_enterprise else 60
