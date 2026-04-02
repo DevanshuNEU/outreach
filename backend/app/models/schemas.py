@@ -157,6 +157,9 @@ class DraftEmailRequest(BaseModel):
     role_template_id: str
     company_info: str | None = None
     use_sonnet: bool = False
+    previous_subject: str | None = None
+    previous_body: str | None = None
+    previous_issues: list[str] | None = None
 
 
 # ── Contacts ──

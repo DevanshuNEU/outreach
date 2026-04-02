@@ -87,6 +87,9 @@ async def generate_draft(
         revenue=apollo_revenue or company.get("revenue"),
         template_slug=template.get("slug", "swe"),
         model=model,
+        previous_subject=req.previous_subject,
+        previous_body=req.previous_body,
+        previous_issues=req.previous_issues,
     )
 
     # Save draft to application

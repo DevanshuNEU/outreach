@@ -19,6 +19,7 @@ import {
   Plus,
   UserPlus,
   Link,
+  ExternalLink,
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -182,9 +183,18 @@ export function NewOutreachPage() {
   const handleDraftEmail = async () => {
     setDrafting(true);
     try {
+      const isRevision = !!emailBody && !!emailQuality?.issues?.length;
       const res = await api.post(
         `/api/applications/${applicationId}/draft-email`,
-        { role_template_id: selectedTemplate, use_sonnet: useSonnet }
+        {
+          role_template_id: selectedTemplate,
+          use_sonnet: useSonnet,
+          ...(isRevision && {
+            previous_subject: emailSubject,
+            previous_body: emailBody,
+            previous_issues: emailQuality!.issues,
+          }),
+        }
       );
       setEmailSubject(res.data.subject);
       setEmailBody(res.data.body);
@@ -851,9 +861,22 @@ export function NewOutreachPage() {
               <div key={c.id} className="space-y-3 p-4 rounded-lg border">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">
-                      {c.first_name} {c.last_name}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium">
+                        {c.first_name} {c.last_name}
+                      </p>
+                      {c.linkedin_url && (
+                        <a
+                          href={c.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-muted-foreground hover:text-blue-500 transition-colors"
+                          title="Open LinkedIn profile"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{c.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-muted-foreground font-mono">{c.email}</span>

@@ -402,6 +402,9 @@ async def draft_email(
     revenue: float | None = None,
     template_slug: str = "swe",
     model: str = "claude-haiku-4-5-20251001",
+    previous_subject: str | None = None,
+    previous_body: str | None = None,
+    previous_issues: list[str] | None = None,
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     print(f"[Email] using model={model}")
@@ -482,6 +485,19 @@ async def draft_email(
                 user_msg += f" ({metrics})"
             user_msg += "\n"
     user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
+
+    # Revision mode: show previous draft + specific issues to fix
+    if previous_issues and previous_body:
+        user_msg += "\n━━ REVISION REQUEST ━━\n"
+        user_msg += "This is a REVISION. A previous version was generated and reviewed. Here is the previous draft and its specific problems.\n\n"
+        if previous_subject:
+            user_msg += f"Previous subject: {previous_subject}\n"
+        user_msg += f"Previous body:\n{previous_body}\n\n"
+        user_msg += "ISSUES IDENTIFIED IN THE PREVIOUS VERSION (fix ALL of these):\n"
+        for i, issue in enumerate(previous_issues, 1):
+            user_msg += f"{i}. {issue}\n"
+        user_msg += "\nWrite a NEW version that fixes every issue above. Do not just patch the old email — rewrite it with the fixes baked in naturally. The new version should be noticeably better.\n"
+        user_msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     if is_enterprise:
         word_limit = 100
