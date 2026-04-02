@@ -156,6 +156,7 @@ class ApplicationOut(BaseModel):
 class DraftEmailRequest(BaseModel):
     role_template_id: str
     company_info: str | None = None
+    use_sonnet: bool = False
 
 
 # ── Contacts ──

@@ -401,8 +401,10 @@ async def draft_email(
     employee_count: int | None = None,
     revenue: float | None = None,
     template_slug: str = "swe",
+    model: str = "claude-haiku-4-5-20251001",
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    print(f"[Email] using model={model}")
 
     tier = _get_email_tier(employee_count=employee_count, revenue=revenue)
     is_enterprise = tier == "enterprise"
@@ -492,7 +494,7 @@ async def draft_email(
         user_msg += "\n\nTHE LAST LINE MUST BE A QUESTION ASKING FOR A CALL. Not a statement. Not a fragment. A complete question. Examples: 'Worth a quick call this week?' or 'Would love 20 minutes if you're open to it.' Cut any proof sentence to make room. Never skip this."
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=model,
         max_tokens=600,
         system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_msg}],
@@ -566,8 +568,11 @@ async def draft_email(
     db = get_db()
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
-    # Haiku: $1/M input, $5/M output
-    cost_cents = (input_tokens * 0.0001 + output_tokens * 0.0005)
+    # Haiku: $1/M input, $5/M output | Sonnet: $3/M input, $15/M output
+    if "sonnet" in model:
+        cost_cents = (input_tokens * 0.0003 + output_tokens * 0.0015)
+    else:
+        cost_cents = (input_tokens * 0.0001 + output_tokens * 0.0005)
 
     db.table("api_usage").insert({
         "user_id": user_id,

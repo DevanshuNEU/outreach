@@ -70,6 +70,8 @@ async def generate_draft(
         raise HTTPException(404, "Profile not found")
     profile = profile.data[0]
 
+    model = "claude-sonnet-4-6" if req.use_sonnet else "claude-haiku-4-5-20251001"
+
     result = await draft_email(
         user_id=current_user["id"],
         job_description=application.get("job_description"),
@@ -84,6 +86,7 @@ async def generate_draft(
         employee_count=company.get("employee_count"),
         revenue=apollo_revenue or company.get("revenue"),
         template_slug=template.get("slug", "swe"),
+        model=model,
     )
 
     # Save draft to application

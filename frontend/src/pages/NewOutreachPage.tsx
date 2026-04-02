@@ -67,6 +67,7 @@ export function NewOutreachPage() {
   const [linkedinNote, setLinkedinNote] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [wordCount, setWordCount] = useState(0);
+  const [useSonnet, setUseSonnet] = useState(false);
   const [emailQuality, setEmailQuality] = useState<{
     score: number | null;
     issues: string[];
@@ -183,7 +184,7 @@ export function NewOutreachPage() {
     try {
       const res = await api.post(
         `/api/applications/${applicationId}/draft-email`,
-        { role_template_id: selectedTemplate }
+        { role_template_id: selectedTemplate, use_sonnet: useSonnet }
       );
       setEmailSubject(res.data.subject);
       setEmailBody(res.data.body);
@@ -445,21 +446,44 @@ export function NewOutreachPage() {
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
               <Button variant="outline" onClick={() => setStep("input")}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Back
               </Button>
+              {/* Model toggle */}
+              <div className="flex items-center gap-1 rounded-lg border p-1 bg-muted/40">
+                <button
+                  onClick={() => setUseSonnet(false)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    !useSonnet
+                      ? "bg-background shadow text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Haiku
+                </button>
+                <button
+                  onClick={() => setUseSonnet(true)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    useSonnet
+                      ? "bg-violet-600 shadow text-white"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sonnet ✦
+                </button>
+              </div>
               <Button
                 onClick={handleDraftEmail}
                 disabled={!selectedTemplate || drafting}
-                className="gap-2"
+                className={`gap-2 ${useSonnet ? "bg-violet-600 hover:bg-violet-700" : ""}`}
               >
                 {drafting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Mail className="h-4 w-4" />
                 )}
-                Generate Draft
+                {useSonnet ? "Generate with Sonnet" : "Generate Draft"}
               </Button>
             </div>
           </CardContent>
@@ -472,7 +496,7 @@ export function NewOutreachPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Email Draft</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant={wordCount > 150 ? "destructive" : "secondary"}>
                   {wordCount} words
                 </Badge>
@@ -487,11 +511,35 @@ export function NewOutreachPage() {
                     {emailQuality.score}/10
                   </Badge>
                 )}
+                {/* Model toggle in draft step */}
+                <div className="flex items-center gap-1 rounded-lg border p-0.5 bg-muted/40">
+                  <button
+                    onClick={() => setUseSonnet(false)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      !useSonnet
+                        ? "bg-background shadow text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Haiku
+                  </button>
+                  <button
+                    onClick={() => setUseSonnet(true)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      useSonnet
+                        ? "bg-violet-600 shadow text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Sonnet ✦
+                  </button>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleDraftEmail}
                   disabled={drafting}
+                  className={useSonnet ? "border-violet-400 text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/30" : ""}
                 >
                   <RefreshCw className={`h-3 w-3 mr-1 ${drafting ? "animate-spin" : ""}`} />
                   Regenerate
