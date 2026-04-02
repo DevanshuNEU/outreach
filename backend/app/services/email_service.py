@@ -64,15 +64,11 @@ ONE story. The single most relevant project or moment. Go deep on the decision a
 Do NOT list multiple projects. One deep story beats five shallow mentions.
 
 ━━ HOW TO CLOSE ━━
-The close does two jobs:
+A direct ask for time. Not a question about their work. Not "let me know." A direct ask: "Worth a quick call this week?" or "Open for 20 minutes this week?"
 
-1. Drop the availability signal. For a startup hiring manager, knowing the candidate is available NOW changes the calculus. Include this fact naturally — it is not filler, it is a competitive advantage:
-"Graduating May 2026. STEM OPT — no sponsorship needed, 3 years work authorization."
-Weave it in before the ask. One sentence. Not a disclaimer — a fact that makes them move faster.
+NOTE: Graduation date and work authorization are already in the sign-off block appended after the body — do NOT repeat them in the body. The reader will see them.
 
-2. A direct ask for time. Not a question about their work. Not "let me know." A direct ask: "Worth a quick call this week?" or "Open for 20 minutes this week?"
-
-The reader must finish the email knowing: (a) this person is available and authorized to work immediately, (b) they want a conversation, (c) the ball is in the reader's court.
+The reader must finish the email knowing exactly what you want: a conversation. The ball is in their court.
 
 ━━ THE "SO WHAT?" TEST ━━
 Every sentence must survive: if the reader thinks "so what?" after reading it, cut it or rewrite it. "I'm a software engineer" fails. "I brought p95 from 800ms to 280ms before anyone suggested adding servers" passes.
@@ -286,9 +282,7 @@ TASK 5 — EXPERIENCE GAP CHECK:
 Does the JD ask for significantly more experience than a May 2026 grad would have? If yes, set "experience_gap" to true. The email should then honestly acknowledge the gap in one sentence and pivot to what matters.
 
 TASK 6 — CRAFT A HUMAN CTA:
-Suggest a CTA that feels natural and direct. Must include TWO things:
-1. The availability signal: "Graduating May 2026. STEM OPT — no sponsorship needed, 3 years work auth." (exact wording can vary but the facts must be there — grad date, OPT, no sponsorship). For a startup this is a genuine competitive advantage — it means the candidate can start soon and costs nothing extra to hire.
-2. A direct ask for time: "Worth a quick call this week?" or "Open for 20 minutes this week?" — not "let me know" or "would love to connect."
+Suggest a CTA that feels natural and direct. A direct ask for time: "Worth a quick call this week?" or "Open for 20 minutes this week?" — not "let me know" or "would love to connect." NOTE: graduation date and work authorization are already in the sign-off block — do NOT repeat them in the CTA.
 
 Return ONLY valid JSON:
 {
@@ -302,7 +296,7 @@ Return ONLY valid JSON:
   "lead_projects": ["<project name 1>"],
   "lead_reason": "<1 sentence: why this project maps to this challenge. If weak match, say so honestly>",
   "builder_angle": "<if match_quality is weak: 1 sentence about the builder story to lead with instead>",
-  "human_cta": "<2 sentences: (1) availability signal — grad date May 2026, STEM OPT, no sponsorship needed; (2) direct ask for time. Example: 'Graduating May 2026, STEM OPT — no sponsorship needed. Worth a quick call this week?'>"
+  "human_cta": "<1-2 sentences: direct ask for time. Example: 'Worth a quick call this week?' — availability info is already in the sign-off, do not repeat it here>"
 }"""
 
 
@@ -525,8 +519,7 @@ async def draft_email(
         word_limit = 150
         user_msg += f"\nDraft the cold email now. Output ONLY: Subject: line, then body. Nothing else. No greeting. No links. No sign-off. No separator lines. No em dashes. NO BULLET POINTS — full prose paragraphs only. Subject: 60 chars MAX. Body: {word_limit} words HARD MAX (count before output — if over {word_limit}, delete the weakest sentence). First word of the email MUST be about them, not 'I'. ONE project only — go deep, not wide."
         user_msg += "\n\nEVERY SENTENCE MUST BE GRAMMATICALLY COMPLETE. No fragments. 'But product-minded engineering and the ability to...' is a fragment — it has no verb and makes no sense alone. Every sentence needs a subject and a verb. Read each sentence before outputting it."
-        user_msg += "\n\nBEFORE THE FINAL QUESTION, include the availability signal in ONE sentence: graduation date (May 2026), visa status (STEM OPT, no sponsorship needed, 3 years work auth). This is a COMPETITIVE ADVANTAGE for any startup or growth company — it means immediate availability and zero hiring cost overhead. State it as a fact, not a disclaimer. Example: 'Graduating May 2026. STEM OPT — no sponsorship needed, 3 years work authorization.' Then the call ask."
-        user_msg += "\n\nTHE LAST LINE MUST BE A QUESTION ASKING FOR A CALL. Not a statement. Not a fragment. A complete question. Examples: 'Worth a quick call this week?' or 'Open for 20 minutes this week?' Cut any proof sentence to make room for the availability signal + CTA. Never skip either."
+        user_msg += "\n\nTHE LAST LINE MUST BE A QUESTION ASKING FOR A CALL. Not a statement. Not a fragment. A complete question. Examples: 'Worth a quick call this week?' or 'Open for 20 minutes this week?' Cut any proof sentence to make room. Never skip this."
 
     response = client.messages.create(
         model=model,
