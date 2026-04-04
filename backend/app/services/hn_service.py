@@ -7,7 +7,7 @@ from datetime import datetime
 # Update this dict each month with the new thread ID from: https://news.ycombinator.com/ask
 # The _get_latest_thread_id() function auto-picks the current month's thread.
 HN_THREAD_IDS = {
-    "2026-04": 47601858,
+    "2026-04": 47601159,
     "2026-03": 47219668,
     "2026-02": 46857488,
     "2026-01": 46466074,
