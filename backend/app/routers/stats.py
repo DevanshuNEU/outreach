@@ -177,11 +177,11 @@ def get_followup_queue(current_user: dict = Depends(get_current_user)):
     if not rows:
         return {"overdue": [], "due_today": [], "upcoming": [], "total_due": 0}
 
-    # Batch-fetch applications + companies
+    # Batch-fetch applications + companies (including follow-up drafts)
     app_ids = list({r["application_id"] for r in rows})
     apps_res = (
         db.table("applications")
-        .select("id, job_title, company_id, companies(name, location)")
+        .select("id, job_title, company_id, followup_1_body, followup_2_body, followup_3_body, companies(name, location)")
         .in_("id", app_ids)
         .execute()
     )
@@ -200,11 +200,13 @@ def get_followup_queue(current_user: dict = Depends(get_current_user)):
         company = app.get("companies") or {}
         contact = row.get("contacts") or {}
 
+        fu_num = fu["followup_number"]
+        fu_body_key = f"followup_{fu_num}_body"
         item = {
             "outreach_id": row["id"],
             "application_id": row["application_id"],
-            "followup_number": fu["followup_number"],
-            "followup_field": FOLLOWUP_CADENCE[fu["followup_number"] - 1][2],
+            "followup_number": fu_num,
+            "followup_field": FOLLOWUP_CADENCE[fu_num - 1][2],
             "due_date": fu["due_date"],
             "days_until": fu["days_until"],
             "is_overdue": fu["is_overdue"],
@@ -212,6 +214,7 @@ def get_followup_queue(current_user: dict = Depends(get_current_user)):
             "contact_email": contact.get("email", ""),
             "company_name": company.get("name", "Unknown"),
             "job_title": app.get("job_title", ""),
+            "followup_body": app.get(fu_body_key, "") or "",
         }
 
         if fu["is_overdue"] and fu["days_until"] < 0:

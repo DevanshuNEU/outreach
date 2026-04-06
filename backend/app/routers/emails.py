@@ -92,12 +92,15 @@ async def generate_draft(
         previous_issues=req.previous_issues,
     )
 
-    # Save draft to application
+    # Save draft + follow-up drafts to application
     db.table("applications").update({
         "email_subject": result["subject"],
         "email_body": result["body"],
         "email_status": "draft",
         "role_template_id": req.role_template_id,
+        "followup_1_body": result.get("followup_1_body", ""),
+        "followup_2_body": result.get("followup_2_body", ""),
+        "followup_3_body": result.get("followup_3_body", ""),
     }).eq("id", app_id).execute()
 
     return result

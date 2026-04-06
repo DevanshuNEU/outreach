@@ -109,6 +109,78 @@ CRITICAL — NEVER INVENT:
 No em dashes anywhere. No bullet points anywhere. No separator lines (--- or ___) before or after the body."""
 
 
+FOLLOWUP_PROMPT = """You write short follow-up emails for cold outreach. The initial email has already been sent. These are bumps — short, human, not pushy.
+
+RULES:
+- ZERO em dashes. ZERO bullet points. ZERO emojis.
+- No "just following up" or "circling back" or "wanted to check in" — those get deleted.
+- Each follow-up must feel different from the last. New angle, new energy.
+- Short sentences. Conversational. Like a real person bumping a thread.
+- NO greeting (Hi/Hey) — just the body. Greeting is added separately.
+- NO sign-off — added separately.
+- NEVER invent metrics or numbers not in the context provided.
+
+FU1 (day 3 — first bump):
+- 2-3 sentences MAX. Under 40 words.
+- Reference the topic of the original email (not "my previous email").
+- One small new observation or hook — something you noticed about their product/company, or a tiny new angle on your story.
+- End with a direct ask: "Worth a quick call?" or "Still open for 15 minutes?"
+
+FU2 (day 10 — second bump):
+- 2 sentences MAX. Under 30 words.
+- Even more direct. Less explanation.
+- New angle if possible — a recent result, a thing you noticed, or just genuine persistence.
+- End with the ask.
+
+FU3 (day 17 — last touch):
+- 2 sentences MAX. Under 25 words.
+- Gracious. Make it easy to say no. "If the timing's off, no worries" energy.
+- Still ends with a question, not a statement.
+
+Output ONLY the body text for the requested follow-up number. No label. No greeting. No sign-off."""
+
+
+def generate_followups(
+    client: anthropic.Anthropic,
+    company_name: str,
+    job_title: str | None,
+    email_subject: str,
+    email_body: str,
+    model: str = "claude-haiku-4-5-20251001",
+) -> dict[str, str]:
+    """Generate FU1, FU2, FU3 drafts based on the initial email. Returns dict with fu1/fu2/fu3 keys."""
+    context = f"""Company: {company_name}
+Role: {job_title or "Software Engineer"}
+Original subject: {email_subject}
+Original email body:
+{email_body[:600]}"""
+
+    results = {}
+    fu_specs = [
+        ("fu1", "Write FU1 (day 3 follow-up). Under 40 words. Body only."),
+        ("fu2", "Write FU2 (day 10 follow-up). Under 30 words. Body only."),
+        ("fu3", "Write FU3 (day 17 follow-up). Under 25 words. Body only."),
+    ]
+
+    for key, instruction in fu_specs:
+        try:
+            r = client.messages.create(
+                model=model,
+                max_tokens=150,
+                system=FOLLOWUP_PROMPT,
+                messages=[{"role": "user", "content": f"{context}\n\n{instruction}"}],
+            )
+            text = r.content[0].text.strip().strip('"')
+            # Kill any em dashes that slip through
+            text = re.sub(r'\s*[—–]\s*([a-zA-Z])', lambda m: '. ' + m.group(1).upper(), text)
+            text = re.sub(r'\s*[—–]\s*', '. ', text)
+            results[key] = text
+        except Exception:
+            results[key] = ""
+
+    return results
+
+
 LINKEDIN_NOTE_PROMPT = """You write a LinkedIn connection request note. 300 character HARD LIMIT. Count every character including spaces.
 
 RULES:
@@ -616,10 +688,25 @@ async def draft_email(
     if not is_enterprise and job_description:
         validation = _validate_email(client, subject, body, job_description, template_slug)
 
+    # Generate follow-up drafts (always use Haiku — these are short bumps, no need for Sonnet)
+    followups = {}
+    if not is_enterprise:
+        followups = generate_followups(
+            client=client,
+            company_name=company_name,
+            job_title=None,
+            email_subject=subject,
+            email_body=body,
+            model="claude-haiku-4-5-20251001",
+        )
+
     return {
         "subject": subject,
         "body": body,
         "linkedin_note": linkedin_note,
+        "followup_1_body": followups.get("fu1", ""),
+        "followup_2_body": followups.get("fu2", ""),
+        "followup_3_body": followups.get("fu3", ""),
         "quality": {
             "score": validation.get("score"),
             "issues": validation.get("issues", []),

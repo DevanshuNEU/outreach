@@ -145,6 +145,9 @@ class ApplicationOut(BaseModel):
     status: str
     notes: str | None = None
     linkedin_note: str | None = None
+    followup_1_body: str | None = None
+    followup_2_body: str | None = None
+    followup_3_body: str | None = None
     contact_count: int = 0
     next_followup: NextFollowUp | None = None
     has_reply: bool = False

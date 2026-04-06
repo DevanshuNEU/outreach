@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, CheckCircle } from "lucide-react";
+import { CopyButton } from "@/components/CopyButton";
 import api from "@/lib/api";
 
 interface QueueItem {
@@ -17,6 +18,7 @@ interface QueueItem {
   contact_email: string;
   company_name: string;
   job_title: string;
+  followup_body: string;
 }
 
 interface QueueData {
@@ -101,7 +103,7 @@ export function FollowUpQueueCard() {
             {allItems.map((item) => (
               <div
                 key={`${item.outreach_id}-${item.followup_number}`}
-                className={`flex items-center justify-between gap-2 p-2 rounded-md border text-sm ${
+                className={`p-3 rounded-md border text-sm space-y-2 ${
                   item.is_overdue && item.days_until < 0
                     ? "border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800"
                     : item.days_until === 0
@@ -109,47 +111,56 @@ export function FollowUpQueueCard() {
                     : "border-gray-200 dark:border-gray-700"
                 }`}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <Badge
-                      className={`text-[10px] px-1.5 ${
-                        item.is_overdue
-                          ? "bg-red-100 text-red-800"
-                          : item.days_until === 0
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      FU{item.followup_number}
-                    </Badge>
-                    <span className="font-medium truncate">{item.company_name}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        className={`text-[10px] px-1.5 ${
+                          item.is_overdue
+                            ? "bg-red-100 text-red-800"
+                            : item.days_until === 0
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        FU{item.followup_number}
+                      </Badge>
+                      <span className="font-medium truncate">{item.company_name}</span>
+                      <span className="text-xs text-muted-foreground truncate">· {item.contact_name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {item.job_title || "No title"}
+                      {item.days_until < 0 && (
+                        <span className="text-red-600 ml-1 font-medium">
+                          {Math.abs(item.days_until)}d overdue
+                        </span>
+                      )}
+                      {item.days_until === 0 && (
+                        <span className="text-orange-600 ml-1 font-medium">due today</span>
+                      )}
+                      {item.days_until > 0 && (
+                        <span className="text-muted-foreground ml-1">in {item.days_until}d</span>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.contact_name} · {item.job_title || "No title"}
-                    {item.days_until < 0 && (
-                      <span className="text-red-600 ml-1">
-                        {Math.abs(item.days_until)}d overdue
-                      </span>
-                    )}
-                    {item.days_until > 0 && (
-                      <span className="text-muted-foreground ml-1">
-                        in {item.days_until}d
-                      </span>
-                    )}
-                    {item.days_until === 0 && (
-                      <span className="text-orange-600 ml-1">today</span>
-                    )}
-                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs shrink-0"
+                    disabled={marking === item.outreach_id}
+                    onClick={() => handleMarkSent(item)}
+                  >
+                    {marking === item.outreach_id ? "..." : "Mark Sent"}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs shrink-0"
-                  disabled={marking === item.outreach_id}
-                  onClick={() => handleMarkSent(item)}
-                >
-                  {marking === item.outreach_id ? "..." : "Mark Sent"}
-                </Button>
+                {item.followup_body ? (
+                  <div className="flex items-start justify-between gap-2 p-2 rounded bg-muted/60 border border-muted">
+                    <p className="text-xs text-foreground/80 leading-relaxed flex-1">{item.followup_body}</p>
+                    <CopyButton text={item.followup_body} label="Copy" />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No draft — regenerate email to get follow-up drafts</p>
+                )}
               </div>
             ))}
           </div>
