@@ -29,13 +29,15 @@ interface QueueData {
 export function FollowUpQueueCard() {
   const [data, setData] = useState<QueueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [marking, setMarking] = useState<string | null>(null);
 
   const load = () => {
+    setError("");
     api
       .get("/api/followup-queue")
       .then((r) => setData(r.data))
-      .catch(() => {})
+      .catch((e) => setError(e.response?.data?.detail || "Failed to load follow-ups"))
       .finally(() => setLoading(false));
   };
 
@@ -87,7 +89,9 @@ export function FollowUpQueueCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {allItems.length === 0 ? (
+        {error ? (
+          <p className="text-sm text-red-600 py-2">{error}</p>
+        ) : allItems.length === 0 ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
             All caught up! No follow-ups due.

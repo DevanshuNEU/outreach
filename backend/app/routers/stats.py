@@ -167,12 +167,11 @@ def get_followup_queue(current_user: dict = Depends(get_current_user)):
         .select("*, contacts(*)")
         .eq("user_id", uid)
         .eq("replied", False)
-        .neq("sent_at", "null")
         .execute()
     )
     rows = outreach_res.data or []
 
-    # Filter to only rows with actual sent_at
+    # Filter to only rows with actual sent_at value
     rows = [r for r in rows if r.get("sent_at")]
 
     if not rows:
