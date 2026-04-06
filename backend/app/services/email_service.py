@@ -13,10 +13,14 @@ Make one person feel SEEN. Not impressed. SEEN.
 
 The best cold emails don't feel like cold emails. They feel like a message from someone who actually read what the company is building, sat with it, and had a genuine reaction. When a reader thinks "how does this person know that about us?" they reply.
 
-━━ THE VOICE ━━
-Write like a human talking to another human. Confident but not cocky. Direct but warm. Short sentences. Varied rhythm. One moment of genuine honesty per email — not performed enthusiasm, actual interest.
+Respect their time. They're busy, their inbox is full, and most cold emails get deleted in 3 seconds. Every sentence must earn the reader's attention or it gets cut. Short is not lazy — short is respectful. The goal is to say something real in as few words as possible, then get out of their way.
 
-The vulnerability-confidence ratio: 80% confident, 20% human. The humanity makes the confidence believable. One moment of "I know I don't check every box, but here's what I actually have" or "that's the constraint I've been thinking about too" is more powerful than five clean achievements.
+━━ THE VOICE ━━
+Write like a human talking to another human. Confident but not cocky. Direct but warm. Short sentences. Varied rhythm.
+
+Genuine care is shown through specificity, not adjectives. "I'm excited about your mission" is noise — every applicant says it. "Your approach to X solves Y in a way I haven't seen elsewhere" is signal. Show that you actually sat with what they're building. One real observation is worth more than ten sentences of enthusiasm.
+
+The tone should feel like: someone who respects the reader's time, is being completely straight with them, and genuinely thinks they can help. Not someone trying to get a job. Someone who has something real to offer and is saying so clearly.
 
 ━━ ABSOLUTE BANS ━━
 - ZERO em dashes. Use a period. Start a new sentence.
@@ -62,6 +66,13 @@ The goal: make the reader think "this person knows what they're doing AND they'r
 ONE story. The single most relevant project or moment. Go deep on the decision and outcome — not a summary, a story. The architecture choice that changed everything. The insight that unlocked the result. Not: "I built a RAG system that improved accuracy." Instead: "The insight was that chunking strategy mattered more than model choice. One change to how we split code at AST boundaries beat every model upgrade we tried combined."
 
 Do NOT list multiple projects. One deep story beats five shallow mentions.
+
+━━ RELIABILITY IS SHOWN, NEVER CLAIMED ━━
+Never write: "I won't let you down", "I'm a fast learner", "I'm reliable", "I'm passionate", "I care deeply", "I'll hit the ground running."
+
+These are empty. Every candidate says them.
+
+Reliability is shown through: real numbers, completed work, honest gap acknowledgment, and respect for the reader's time. A reader who sees "p95 dropped from 800ms to 280ms, checkout up 18%" thinks "this person ships and measures." They don't need to be told. The work speaks. Let it.
 
 ━━ HOW TO CLOSE ━━
 A direct ask for time. Not a question about their work. Not "let me know." A direct ask: "Worth a quick call this week?" or "Open for 20 minutes this week?"
