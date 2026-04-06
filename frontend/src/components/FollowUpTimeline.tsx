@@ -1,5 +1,6 @@
 import { Check, Clock, AlertCircle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/CopyButton";
 
 interface Outreach {
   id: string;
@@ -13,6 +14,11 @@ interface Outreach {
 interface Props {
   outreach: Outreach;
   onMarkSent: (outreachId: string, field: string) => void;
+  followupBodies?: {
+    fu1?: string;
+    fu2?: string;
+    fu3?: string;
+  };
 }
 
 const STEPS = [
@@ -29,7 +35,9 @@ function daysFromNow(dateStr: string, addDays: number): number {
   return Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function FollowUpTimeline({ outreach, onMarkSent }: Props) {
+const FU_BODY_KEYS = ["fu1", "fu2", "fu3"] as const;
+
+export function FollowUpTimeline({ outreach, onMarkSent, followupBodies }: Props) {
   if (!outreach.sent_at) return null;
 
   if (outreach.replied) {
@@ -43,7 +51,21 @@ export function FollowUpTimeline({ outreach, onMarkSent }: Props) {
     );
   }
 
+  // Find the current actionable step (next unsent follow-up that's due)
+  const activeFuIndex = STEPS.findIndex((step, i) => {
+    if (i === 0) return false;
+    const isSent = !!outreach[step.field as keyof Outreach];
+    const prevSent = !!outreach[STEPS[i - 1].field as keyof Outreach];
+    const daysUntil = daysFromNow(outreach.sent_at!, step.days);
+    return !isSent && prevSent && daysUntil <= 0;
+  });
+
+  const activeFuBody = activeFuIndex > 0
+    ? followupBodies?.[FU_BODY_KEYS[activeFuIndex - 1]]
+    : undefined;
+
   return (
+    <div className="space-y-3">
     <div className="flex items-center gap-1 py-2">
       {STEPS.map((step, i) => {
         const isSent = !!outreach[step.field as keyof Outreach];
@@ -130,6 +152,18 @@ export function FollowUpTimeline({ outreach, onMarkSent }: Props) {
           </div>
         );
       })}
+    </div>
+
+    {/* Follow-up draft for the current due step */}
+    {activeFuBody && (
+      <div className="flex items-start justify-between gap-2 p-2.5 rounded-md bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+        <p className="text-xs text-foreground/80 leading-relaxed flex-1">{activeFuBody}</p>
+        <CopyButton text={activeFuBody} label="Copy" />
+      </div>
+    )}
+    {activeFuIndex > 0 && !activeFuBody && (
+      <p className="text-xs text-muted-foreground italic">No follow-up draft — regenerate email to create one</p>
+    )}
     </div>
   );
 }

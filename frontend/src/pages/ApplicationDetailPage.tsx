@@ -185,6 +185,11 @@ export function ApplicationDetailPage() {
                       <FollowUpTimeline
                         outreach={o}
                         onMarkSent={markFollowUpSent}
+                        followupBodies={{
+                          fu1: app.followup_1_body,
+                          fu2: app.followup_2_body,
+                          fu3: app.followup_3_body,
+                        }}
                       />
                     </div>
                   )}
@@ -194,10 +199,10 @@ export function ApplicationDetailPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="email">
+        <TabsContent value="email" className="space-y-3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Email Draft</CardTitle>
+              <CardTitle className="text-sm">Initial Email</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
@@ -217,6 +222,28 @@ export function ApplicationDetailPage() {
               </pre>
             </CardContent>
           </Card>
+
+          {/* Follow-up drafts */}
+          {[
+            { label: "FU1 — Day 3", body: app.followup_1_body },
+            { label: "FU2 — Day 10", body: app.followup_2_body },
+            { label: "FU3 — Day 17", body: app.followup_3_body },
+          ].map(({ label, body }) => body ? (
+            <Card key={label}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
+                  <CopyButton text={body} label="Copy" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <pre className="whitespace-pre-wrap text-sm font-mono">{body}</pre>
+                <Separator className="my-2" />
+                <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{linksBlock}</pre>
+                <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{signOff}</pre>
+              </CardContent>
+            </Card>
+          ) : null)}
         </TabsContent>
 
         <TabsContent value="jd">
