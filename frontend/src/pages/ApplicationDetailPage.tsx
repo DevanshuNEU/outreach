@@ -27,6 +27,7 @@ interface Outreach {
     title: string;
     email: string;
     seniority: string;
+    linkedin_url: string | null;
   } | null;
 }
 
@@ -144,8 +145,20 @@ export function ApplicationDetailPage() {
                         text={buildFullEmail(o.contact?.first_name || "")}
                         label="Full Email"
                       />
+                      {o.contact?.linkedin_url && (
+                        <a
+                          href={o.contact.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <Link className="h-3 w-3" />
+                            LinkedIn
+                          </Button>
+                        </a>
+                      )}
                       {app.linkedin_note && (
-                        <CopyButton text={app.linkedin_note} label="LinkedIn" />
+                        <CopyButton text={app.linkedin_note} label="LI Note" />
                       )}
                       <Separator orientation="vertical" className="h-6" />
                       <Button

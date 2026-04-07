@@ -1,4 +1,5 @@
 import uuid
+from collections import Counter
 import httpx
 from datetime import datetime, timezone
 from app.config import settings
@@ -55,7 +56,65 @@ SENIORITY_FILTERS = {
 }
 
 # Email statuses we accept, in priority order
-ACCEPTED_EMAIL_STATUSES = {"verified", "likely", "guessed", "probabilistic"}
+# "pattern" = we detected the company's email format from verified contacts and applied it
+ACCEPTED_EMAIL_STATUSES = {"verified", "likely", "guessed", "probabilistic", "pattern"}
+
+# ── Email pattern detection ───────────────────────────────────────────────────
+# Known patterns, ordered by specificity. When we have 1-2 verified contacts
+# we can detect the format and generate free guesses for everyone else.
+_EMAIL_PATTERNS = [
+    ("firstname.lastname", lambda f, l: f"{f}.{l}"),
+    ("firstname_lastname", lambda f, l: f"{f}_{l}"),
+    ("firstnamelastname", lambda f, l: f"{f}{l}"),
+    ("firstname",         lambda f, l: f),
+    ("f.lastname",        lambda f, l: f"{f[0]}.{l}" if f else ""),
+    ("flastname",         lambda f, l: f"{f[0]}{l}" if f else ""),
+    ("firstname.l",       lambda f, l: f"{f}.{l[0]}" if l else ""),
+    ("lastname",          lambda f, l: l),
+]
+
+
+def _detect_email_pattern(contacts: list[dict]) -> str | None:
+    """
+    Detect the company's email naming convention from verified/likely contacts.
+    Returns the pattern name (e.g. "firstname.lastname") or None if undetermined.
+    Only uses verified/likely emails — guessed/probabilistic are too unreliable.
+    """
+    votes: Counter = Counter()
+    for c in contacts:
+        email = c.get("email", "")
+        first = (c.get("first_name") or "").lower().strip()
+        last = (c.get("last_name") or "").lower().strip()
+        if not email or not first or not last or "@" not in email:
+            continue
+        if c.get("email_status") not in {"verified", "likely"}:
+            continue
+        local = email.split("@")[0].lower()
+        for name, fn in _EMAIL_PATTERNS:
+            expected = fn(first, last)
+            if expected and local == expected:
+                votes[name] += 1
+                break  # each contact votes for exactly one pattern
+
+    if not votes:
+        return None
+    winner, count = votes.most_common(1)[0]
+    print(f"[Apollo] email pattern votes: {dict(votes)} → winner='{winner}' ({count} votes)")
+    return winner
+
+
+def _apply_email_pattern(pattern: str, first_name: str, last_name: str, domain: str) -> str | None:
+    """Generate an email address for a person given a detected pattern and clean domain."""
+    first = first_name.lower().strip()
+    last = last_name.lower().strip()
+    if not first or not last or not domain:
+        return None
+    fns = dict(_EMAIL_PATTERNS)
+    fn = fns.get(pattern)
+    if not fn:
+        return None
+    local = fn(first, last)
+    return f"{local}@{domain}" if local else None
 
 
 def _get_daily_apollo_credits_used(db) -> int:
@@ -174,6 +233,34 @@ def _clean_company_name(name: str) -> str:
         if name.endswith(suffix):
             return name[: -len(suffix)].strip()
     return name
+
+
+def _is_title_relevant(title: str | None) -> bool:
+    """
+    Return True if this title is relevant for engineering job outreach.
+    Rejects marketing, sales, legal, finance, HR, etc.
+    Always keeps recruiters, engineers, founders, and executives.
+    """
+    title_lower = (title or "").lower()
+    irrelevant_keywords = {
+        "marketing", "sales", "account executive", "account manager",
+        "customer success", "business development", "event",
+        "content", "copywriter", "pr ", "public relations",
+        "legal", "counsel", "attorney", "lawyer",
+        "finance", "accounting", "accountant", "controller",
+        "hr ", "human resources", "people operations",
+        "office manager", "administrative", "executive assistant",
+    }
+    keep_keywords = {"recruit", "talent", "founder", "ceo", "cto", "engineer", "software", "developer", "technical"}
+
+    for kw in irrelevant_keywords:
+        if kw in title_lower:
+            # Check override before rejecting
+            for keep in keep_keywords:
+                if keep in title_lower:
+                    return True
+            return False
+    return True
 
 
 async def search_company(company_name: str, domain: str | None = None) -> dict | None:
@@ -330,8 +417,10 @@ async def find_contacts(
     tier = _get_company_tier(employee_count=employee_count, revenue=revenue)
     print(f"[Apollo] company tier: {tier} (employee_count={employee_count}, revenue={revenue})")
     config = SENIORITY_FILTERS[tier]
-    seen_ids = set()
-    candidate_ids = []  # Apollo person IDs to enrich
+    seen_ids: set[str] = set()
+
+    # Clean domain once — used for email pattern guessing and domain cross-check
+    clean_domain = _clean_domain(company_domain) if company_domain else None
 
     # Build location filter once — reused across all searches
     person_locations = _normalize_location(location)
@@ -341,9 +430,16 @@ async def find_contacts(
     # Step 1: Search for people (FREE — no credits used)
     async with httpx.AsyncClient(timeout=30) as client:
 
-        async def _run_searches(use_location: bool) -> list[str]:
-            """Run all configured searches. Returns list of candidate IDs."""
-            ids = []
+        async def _run_searches(use_location: bool) -> tuple[list[str], list[dict]]:
+            """
+            Run all configured searches.
+            Returns:
+              - has_email_ids: Apollo person IDs where has_email=True (to enrich)
+              - no_email_candidates: people objects with names but no email flag
+                (used for free pattern-based guessing after we detect the company pattern)
+            """
+            ids: list[str] = []
+            no_email_cands: list[dict] = []
             local_seen = set(seen_ids)
             for search_filters in config["searches"]:
                 body = {
@@ -369,8 +465,8 @@ async def find_contacts(
                 loc_tag = "(with location)" if use_location and person_locations else "(no location filter)"
                 print(f"[Apollo] search {search_filters} {loc_tag} -> {len(people)} candidates")
 
-                flagged = []
-                unflagged = []
+                flagged: list[str] = []
+                unflagged: list[dict] = []
                 for person in people:
                     pid = person.get("id")
                     if pid and pid not in local_seen:
@@ -378,24 +474,37 @@ async def find_contacts(
                         if person.get("has_email"):
                             flagged.append(pid)
                         else:
-                            unflagged.append(pid)
+                            first = person.get("first_name", "") or ""
+                            last = person.get("last_name", "") or ""
+                            # Only keep if name looks real — Apollo sometimes obfuscates with ***
+                            if first and "***" not in first and len(first) > 1:
+                                unflagged.append({
+                                    "id": pid,
+                                    "first_name": first,
+                                    "last_name": last,
+                                    "title": person.get("title", ""),
+                                    "seniority": person.get("seniority", ""),
+                                    "linkedin_url": person.get("linkedin_url", ""),
+                                })
 
                 ids.extend(flagged)
+                no_email_cands.extend(unflagged)
 
                 # has_email flag is unreliable for small companies.
                 # If nobody was flagged, try enriching top candidates anyway.
                 if not flagged and unflagged:
                     print(f"[Apollo] no has_email candidates in this search — falling back to top {min(5, len(unflagged))}")
-                    ids.extend(unflagged[:5])
-            return ids
+                    ids.extend([c["id"] for c in unflagged[:5]])
+
+            return ids, no_email_cands
 
         # First try with location filter
-        candidate_ids = await _run_searches(use_location=True)
+        candidate_ids, no_email_candidates = await _run_searches(use_location=True)
 
         # Fallback: if location filter returned 0 candidates, retry without it
         if not candidate_ids and person_locations:
             print(f"[Apollo] 0 candidates with location filter — retrying WITHOUT location")
-            candidate_ids = await _run_searches(use_location=False)
+            candidate_ids, no_email_candidates = await _run_searches(use_location=False)
 
         print(f"[Apollo] {len(candidate_ids)} candidates have emails — checking limits before enriching")
 
@@ -419,18 +528,19 @@ async def find_contacts(
         # Step 2: Bulk enrich to reveal emails (costs 1 credit per person)
         enriched = await _enrich_people_bulk(client, candidate_ids)
 
+    # ── Detect email pattern from verified contacts ───────────────────────────
+    # If we got 1+ verified/likely emails, we know the company's naming convention.
+    # We can use it to: (a) fix Apollo's bad "guessed" emails, and (b) generate
+    # free emails for candidates that Apollo didn't have emails for at all.
+    detected_pattern = _detect_email_pattern(enriched)
+
     # Step 3: Filter contacts — usable email + org cross-check
     # Build domain allowlist for this company so we can catch wrong-org contacts.
-    # e.g. searching Bobyard but getting @google.com emails → blocked.
     allowed_email_domains: set[str] = set()
-    if company_domain:
-        d = _clean_domain(company_domain)
-    else:
-        d = None
-    if d:
-        allowed_email_domains.add(d)
+    if clean_domain:
+        allowed_email_domains.add(clean_domain)
         # Also accept the name-part match (aircall.io matches aircall.com and vice versa)
-        domain_name = d.rsplit(".", 1)[0]  # "aircall" from "aircall.io"
+        domain_name = clean_domain.rsplit(".", 1)[0]  # "aircall" from "aircall.io"
         allowed_email_domains.add(domain_name)  # partial match fallback
         print(f"[Apollo] email domain allowlist: {allowed_email_domains}")
 
@@ -444,16 +554,27 @@ async def find_contacts(
             print(f"  skip {name}: email_status={email_status!r}")
             continue
 
-        # ── Layer 3: org ID cross-check (skipped — subsidiaries break this) ─────
-        # Large companies like Qualcomm have employees tagged under parent org IDs
-        # that differ from the subsidiary we searched. Email domain check below
-        # is sufficient protection against wrong-company contacts.
+        # ── Upgrade Apollo's "guessed" email using detected pattern ────────────
+        # Apollo guesses firstname@domain (always). If the real pattern is
+        # firstname.lastname@domain, Apollo's guess is wrong. Use ours instead.
+        if email_status in {"guessed", "probabilistic"} and detected_pattern and clean_domain:
+            better_email = _apply_email_pattern(
+                detected_pattern,
+                person.get("first_name", ""),
+                person.get("last_name", ""),
+                clean_domain,
+            )
+            if better_email:
+                print(f"  upgraded guess for {name}: {email!r} → {better_email!r} (pattern={detected_pattern})")
+                email = better_email
+                email_status = "pattern"
+                person["email"] = better_email
+                person["email_status"] = "pattern"
 
         # ── Layer 3b: email domain cross-check ───────────────────────────────
         # If we have domain info and the email domain doesn't match at all, reject.
         if allowed_email_domains:
             email_domain = email.split("@")[-1].lower() if "@" in email else ""
-            # Match on full domain OR domain name (e.g. "aircall" matches aircall.io AND aircall.com)
             if email_domain and not any(
                 email_domain.endswith(d) or email_domain.startswith(d + ".") or d in email_domain
                 for d in allowed_email_domains
@@ -461,33 +582,8 @@ async def find_contacts(
                 print(f"  SAFETY SKIP {name}: email {email!r} domain doesn't match company {allowed_email_domains}")
                 continue
 
-        # ── Layer 3c: title relevance filter ─────────────────────────────
-        # Reject clearly non-engineering titles (marketing, sales, legal, HR, etc.)
-        # These people can't help with SWE hiring and emailing them hurts credibility.
-        title_lower = (person.get("title") or "").lower()
-        irrelevant_keywords = {
-            "marketing", "sales", "account executive", "account manager",
-            "customer success", "business development", "event",
-            "content", "copywriter", "pr ", "public relations",
-            "legal", "counsel", "attorney", "lawyer",
-            "finance", "accounting", "accountant", "controller",
-            "hr ", "human resources", "people operations",
-            "office manager", "administrative", "executive assistant",
-        }
-        # Allow: recruiter, talent, engineering, software, cto, ceo, founder, director, vp eng, etc.
-        is_relevant = True
-        for kw in irrelevant_keywords:
-            if kw in title_lower:
-                is_relevant = False
-                break
-        # Override: always keep recruiters, talent, and founders even if title has a flagged word
-        keep_keywords = {"recruit", "talent", "founder", "ceo", "cto", "engineer", "software", "developer", "technical"}
-        if not is_relevant:
-            for kw in keep_keywords:
-                if kw in title_lower:
-                    is_relevant = True
-                    break
-        if not is_relevant:
+        # ── Layer 3c: title relevance filter ─────────────────────────────────
+        if not _is_title_relevant(person.get("title")):
             print(f"  SKIP {name}: irrelevant title '{person.get('title')}'")
             continue
 
@@ -502,6 +598,45 @@ async def find_contacts(
             "linkedin_url": person.get("linkedin_url", ""),
             "company_id": company_id,
         })
+
+    # ── Free pattern-derived contacts for no-email candidates ─────────────────
+    # If we detected the company's email format, generate emails for candidates
+    # that came back from the free search without has_email=True.
+    # These cost ZERO Apollo credits — we're just applying the detected pattern.
+    if detected_pattern and clean_domain and no_email_candidates:
+        already_seen = {
+            (c["first_name"].lower(), c["last_name"].lower())
+            for c in all_contacts
+        }
+        pattern_added = 0
+        for candidate in no_email_candidates:
+            if pattern_added >= 3:  # cap to avoid noise
+                break
+            first = candidate.get("first_name", "")
+            last = candidate.get("last_name", "")
+            if not first or not last:
+                continue
+            if (first.lower(), last.lower()) in already_seen:
+                continue
+            if not _is_title_relevant(candidate.get("title")):
+                continue
+            guessed = _apply_email_pattern(detected_pattern, first, last, clean_domain)
+            if not guessed:
+                continue
+            print(f"[Apollo] pattern-derived (free): {first} {last} → {guessed}")
+            all_contacts.append({
+                "apollo_person_id": candidate["id"],
+                "first_name": first,
+                "last_name": last,
+                "title": candidate.get("title", ""),
+                "seniority": candidate.get("seniority", ""),
+                "email": guessed,
+                "email_status": "pattern",
+                "linkedin_url": candidate.get("linkedin_url", ""),
+                "company_id": company_id,
+            })
+            already_seen.add((first.lower(), last.lower()))
+            pattern_added += 1
 
     print(f"[Apollo] total contacts with verified emails: {len(all_contacts)}")
 
@@ -561,13 +696,16 @@ async def enrich_person(
     people/match to get their verified email. Costs 1 credit.
     Way more reliable than search for small companies.
     """
+    # Always clean the domain — callers may pass full URLs like "https://www.company.com"
+    clean_dom = _clean_domain(domain) if domain else None
+
     body = {
         "first_name": first_name,
         "last_name": last_name,
         "reveal_personal_emails": True,
     }
-    if domain:
-        body["domain"] = domain
+    if clean_dom:
+        body["domain"] = clean_dom
     elif organization_name:
         body["organization_name"] = organization_name
 
@@ -585,15 +723,15 @@ async def enrich_person(
     person = resp.json().get("person")
     if not person:
         print(f"[Apollo] enrich: no match for {first_name} {last_name}")
-        # Fallback: guess email from domain
-        if domain:
+        # Fallback: guess email from clean domain
+        if clean_dom:
             return {
                 "apollo_person_id": None,
                 "first_name": first_name,
                 "last_name": last_name,
                 "title": "",
                 "seniority": "",
-                "email": f"{first_name.lower()}@{domain}",
+                "email": f"{first_name.lower()}@{clean_dom}",
                 "email_status": "guessed",
                 "linkedin_url": "",
             }
@@ -605,8 +743,8 @@ async def enrich_person(
     if not email or email_status not in ACCEPTED_EMAIL_STATUSES:
         print(f"[Apollo] enrich: {first_name} {last_name} has no usable email (status={email_status}), trying guess")
         # Fallback: guess firstname@domain for startups (reliable for <500 person companies)
-        if domain:
-            email = f"{first_name.lower()}@{domain}"
+        if clean_dom:
+            email = f"{first_name.lower()}@{clean_dom}"
             email_status = "guessed"
         else:
             return None

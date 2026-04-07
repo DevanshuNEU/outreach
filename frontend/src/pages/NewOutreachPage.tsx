@@ -805,6 +805,9 @@ export function NewOutreachPage() {
                         {c.email_status === "guessed" && (
                           <span className="text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5">⚠ Guessed</span>
                         )}
+                        {c.email_status === "pattern" && (
+                          <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">~ Pattern</span>
+                        )}
                         {c.email_status === "manual" && (
                           <span className="text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">Manual</span>
                         )}
@@ -888,6 +891,9 @@ export function NewOutreachPage() {
                       )}
                       {c.email_status === "guessed" && (
                         <span className="text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5">⚠ Guessed — double-check before sending</span>
+                      )}
+                      {c.email_status === "pattern" && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">~ Pattern — derived from verified contacts</span>
                       )}
                       {c.email_status === "manual" && (
                         <span className="text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">Manual</span>
