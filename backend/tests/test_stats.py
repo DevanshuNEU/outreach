@@ -48,7 +48,7 @@ def test_apollo_credits_no_usage(client, mock_db):
     assert data["daily_remaining"] == data["daily_limit"]
     assert data["monthly_used"] == 0
     assert data["monthly_total"] == 2515
-    assert data["max_per_search"] == 2
+    assert data["max_per_search"] == 5
 
 
 def test_apollo_credits_counts_today_usage(client, mock_db):
@@ -75,6 +75,6 @@ def test_apollo_credits_returns_config(client, mock_db):
     r = client.get("/api/apollo/credits")
     assert r.status_code == 200
     data = r.json()
-    assert data["daily_limit"] == 50
-    assert data["max_per_search"] == 2
+    assert data["daily_limit"] == 80
+    assert data["max_per_search"] == 5
     assert data["monthly_total"] == 2515

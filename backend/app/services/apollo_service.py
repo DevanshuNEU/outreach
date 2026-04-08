@@ -187,7 +187,8 @@ def _name_matches(query: str, candidate: str) -> bool:
     # Query is prefix of candidate — BUT only if the rest is a known benign suffix
     # "Qualcomm" matches "Qualcomm Incorporated" but NOT "Qualcomm Datacenter Technologies"
     benign_suffixes = {"incorporated", "inc", "inc.", "llc", "ltd", "corp", "corporation",
-                       "technologies", "solutions", "group", "labs", "software", "systems"}
+                       "technologies", "solutions", "group", "labs", "software", "systems",
+                       "research", "pbc", "ai", "io", "co", "hq"}
     if c_clean.startswith(q_clean) and len(c_clean) > len(q_clean):
         remainder = c_clean[len(q_clean):].strip().rstrip("., ")
         remainder_words = set(remainder.split())
