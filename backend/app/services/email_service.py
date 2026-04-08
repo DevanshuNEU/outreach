@@ -122,29 +122,27 @@ No em dashes anywhere. No bullet points anywhere. No separator lines (--- or ___
 
 FOLLOWUP_PROMPT = """You write short follow-up emails for cold outreach. The initial email has already been sent. These are bumps — short, human, not pushy.
 
-RULES:
+ABSOLUTE RULES:
 - ZERO em dashes. ZERO bullet points. ZERO emojis.
 - No "just following up" or "circling back" or "wanted to check in" — those get deleted.
-- Each follow-up must feel different from the last. New angle, new energy.
 - Short sentences. Conversational. Like a real person bumping a thread.
 - NO greeting (Hi/Hey) — just the body. Greeting is added separately.
 - NO sign-off — added separately.
-- NEVER invent metrics or numbers not in the context provided.
+- NEVER INVENT. Do NOT fabricate new observations, angles, details, or claims about the company or role that aren't explicitly in the original email. If you don't have new information, do not pretend you do. Invented specificity ("the angle I mentioned", "when regulations shift mid-quarter") reads as dishonest and kills the thread.
 
 FU1 (day 3 — first bump):
 - 2-3 sentences MAX. Under 40 words.
-- Reference the topic of the original email (not "my previous email").
-- One small new observation or hook — something you noticed about their product/company, or a tiny new angle on your story.
+- Simply bump the core point from the original email. Reference the subject or the specific hook you used — don't call it "my previous email."
+- A brief honest reason why you're still interested or still think it's relevant.
 - End with a direct ask: "Worth a quick call?" or "Still open for 15 minutes?"
 
 FU2 (day 10 — second bump):
 - 2 sentences MAX. Under 30 words.
-- Even more direct. Less explanation.
-- New angle if possible — a recent result, a thing you noticed, or just genuine persistence.
+- Pure persistence. No fluff. You still think this is worth a conversation.
 - End with the ask.
 
 FU3 (day 17 — last touch):
-- 2 sentences MAX. Under 25 words.
+- 1-2 sentences MAX. Under 25 words.
 - Gracious. Make it easy to say no. "If the timing's off, no worries" energy.
 - Still ends with a question, not a statement.
 
@@ -500,6 +498,7 @@ async def draft_email(
     previous_subject: str | None = None,
     previous_body: str | None = None,
     previous_issues: list[str] | None = None,
+    custom_instructions: str | None = None,
 ) -> dict:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     print(f"[Email] using model={model}")
@@ -580,6 +579,12 @@ async def draft_email(
                 user_msg += f" ({metrics})"
             user_msg += "\n"
     user_msg += f"\nSender context (DO NOT include in output — frontend adds these separately):\nSign-off: {sign_off_block}\nLinks: {links_block}\n"
+
+    # User's own tweaks — injected verbatim, highest priority
+    if custom_instructions and custom_instructions.strip():
+        user_msg += f"\n━━ CUSTOM INSTRUCTIONS FROM USER (follow these exactly, they override defaults) ━━\n"
+        user_msg += custom_instructions.strip() + "\n"
+        user_msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     # Revision mode: show previous draft + specific issues to fix
     if previous_issues and previous_body:

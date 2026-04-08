@@ -93,6 +93,7 @@ export function NewOutreachPage() {
   const [manualLinkedin, setManualLinkedin] = useState("");
   const [addingManual, setAddingManual] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [customInstructions, setCustomInstructions] = useState("");
 
   // Apollo credits
   const [apolloCredits, setApolloCredits] = useState<{
@@ -189,6 +190,7 @@ export function NewOutreachPage() {
         {
           role_template_id: selectedTemplate,
           use_sonnet: useSonnet,
+          ...(customInstructions.trim() && { custom_instructions: customInstructions.trim() }),
           ...(isRevision && {
             previous_subject: emailSubject,
             previous_body: emailBody,
@@ -456,6 +458,20 @@ export function NewOutreachPage() {
                 </button>
               ))}
             </div>
+            {/* Custom instructions before first generation */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Custom instructions <span className="font-normal">(optional — e.g. "mention my GPA", "shorter hook", "focus on RAG work")</span>
+              </Label>
+              <Textarea
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="e.g. make the hook one sentence, mention OpenCodeIntel specifically, end with a question about their infra stack..."
+                rows={2}
+                className="text-sm resize-none"
+              />
+            </div>
+
             <div className="flex items-center gap-3 flex-wrap">
               <Button variant="outline" onClick={() => setStep("input")}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Back
@@ -558,6 +574,20 @@ export function NewOutreachPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Custom instructions — user's own tweaks injected into the prompt */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Custom instructions <span className="font-normal">(optional — e.g. "mention my GPA", "shorter hook", "focus on RAG work")</span>
+              </Label>
+              <Textarea
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="e.g. make the hook one sentence, mention OpenCodeIntel specifically, end with a question about their infra stack..."
+                rows={2}
+                className="text-sm resize-none"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>Subject Line</Label>
               <Input

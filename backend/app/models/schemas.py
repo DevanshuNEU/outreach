@@ -163,6 +163,7 @@ class DraftEmailRequest(BaseModel):
     previous_subject: str | None = None
     previous_body: str | None = None
     previous_issues: list[str] | None = None
+    custom_instructions: str | None = None  # user's own tweaks injected into the prompt
 
 
 # ── Contacts ──

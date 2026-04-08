@@ -90,6 +90,7 @@ async def generate_draft(
         previous_subject=req.previous_subject,
         previous_body=req.previous_body,
         previous_issues=req.previous_issues,
+        custom_instructions=req.custom_instructions,
     )
 
     # Save draft + follow-up drafts to application
